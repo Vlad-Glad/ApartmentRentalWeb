@@ -45,6 +45,12 @@ namespace ApartmentRental.Data
 
                 entity.HasIndex(a => a.City)
                       .HasDatabaseName("IX_Apartments_City");
+
+                entity.Property(a => a.Latitude)
+                    .IsRequired(false);
+
+                entity.Property(a => a.Longitude)
+                    .IsRequired(false);
             });
 
 
