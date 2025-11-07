@@ -4,15 +4,17 @@ namespace ApartmentRental.Models
 {
     public class Photo
     {
+        [Key]
         public int Id { get; set; }
 
         [Required]
-        public string ImageUrl { get; set; }
+        [Url(ErrorMessage = "Invalid image URL format.")]
+        public required string ImageUrl { get; set; }
 
         public bool IsCover { get; set; }
 
         public int ApartmentId { get; set; }
 
-        public virtual Apartment Apartment { get; set; }
+        public virtual required Apartment Apartment { get; set; }
     }
 }
