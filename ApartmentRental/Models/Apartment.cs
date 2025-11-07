@@ -33,7 +33,7 @@ namespace ApartmentRental.Models
         public required string LessorId { get; set; }
 
         [ValidateNever]
-        public required virtual ApplicationUser Lessor { get; set; }
+        public virtual ApplicationUser Lessor { get; set; }
 
         [ValidateNever]
         public virtual ICollection<Photo> Photos { get; set; } = new List<Photo>();
