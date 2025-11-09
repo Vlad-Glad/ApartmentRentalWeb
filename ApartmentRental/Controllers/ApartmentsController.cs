@@ -8,9 +8,11 @@ using Microsoft.EntityFrameworkCore;
 using ApartmentRental.Data;
 using ApartmentRental.Models;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Authorization;
 
 namespace ApartmentRental.Controllers
 {
+    [Authorize]
     public class ApartmentsController : Controller
     {
         private readonly ApplicationDbContext _context;
@@ -22,7 +24,7 @@ namespace ApartmentRental.Controllers
             _userManager = userManager;
         }
 
-
+        [AllowAnonymous]
         public async Task<IActionResult> Index()
         {
             var applicationDbContext = _context.Apartments.Include(a => a.Lessor);
@@ -49,38 +51,55 @@ namespace ApartmentRental.Controllers
 
         public IActionResult Create()
         {
-            ViewData["LessorId"] = new SelectList(_context.Users, "Id", "Id");
+            //ViewData["LessorId"] = new SelectList(_context.Users, "Id", "Id");
             return View();
         }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("Title,Description,Price,City,FullAddress,LessorId")] Apartment apartment)
+        public async Task<IActionResult> Create([Bind("Title,Description,Price,City,FullAddress")] Apartment apartment)
         {
+            ModelState.Remove("LessorId");
+            ModelState.Remove("Lessor");
+            ModelState.Remove("Photos");
+            ModelState.Remove("Latitude");
+            ModelState.Remove("Longitude");
+
             if (!ModelState.IsValid)
             {
-                ViewData["LessorId"] = new SelectList(_context.Users, "Id", "Id", apartment.LessorId);
+                //ViewData["LessorId"] = new SelectList(_context.Users, "Id", "Id", apartment.LessorId);
                 return View(apartment);
             }
 
+            var userId = _userManager.GetUserId(User);
+            if (userId == null)
+            {
+                return Challenge();
+            }
+
+            apartment.LessorId = userId;
+
             _context.Add(apartment);
             await _context.SaveChangesAsync();
+
             return RedirectToAction(nameof(Index));
         }
 
         public async Task<IActionResult> Edit(int? id)
         {
-            if (id == null)
-            {
-                return NotFound();
-            }
+            if (id == null) return NotFound();
 
             var apartment = await _context.Apartments.FindAsync(id);
-            if (apartment == null)
+
+            if (apartment == null) return NotFound();
+
+            var currentUserId = _userManager.GetUserId(User);
+
+            if (apartment.LessorId != currentUserId)
             {
-                return NotFound();
+                return Forbid();
             }
-            ViewData["LessorId"] = new SelectList(_context.Users, "Id", "Id", apartment.LessorId);
+
             return View(apartment);
         }
 
@@ -119,17 +138,17 @@ namespace ApartmentRental.Controllers
 
         public async Task<IActionResult> Delete(int? id)
         {
-            if (id == null)
-            {
-                return NotFound();
-            }
+            if (id == null) return NotFound();
 
-            var apartment = await _context.Apartments
-                .Include(a => a.Lessor)
-                .FirstOrDefaultAsync(m => m.Id == id);
-            if (apartment == null)
+            var apartment = await _context.Apartments.FindAsync(id);
+
+            if (apartment == null) return NotFound();
+
+            var currentUserId = _userManager.GetUserId(User);
+
+            if (apartment.LessorId != currentUserId)
             {
-                return NotFound();
+                return Forbid();
             }
 
             return View(apartment);

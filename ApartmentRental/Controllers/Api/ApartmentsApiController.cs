@@ -1,12 +1,15 @@
 ﻿using ApartmentRental.Data;
 using ApartmentRental.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
 namespace ApartmentRental.Controllers.Api
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize]
     public class ApartmentsController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
@@ -17,6 +20,7 @@ namespace ApartmentRental.Controllers.Api
         }
 
         [HttpGet]
+        [AllowAnonymous]
         public async Task<ActionResult<IEnumerable<ApartmentDto>>> GetApartments()
         {
             var apartments = await _context.Apartments
@@ -40,6 +44,7 @@ namespace ApartmentRental.Controllers.Api
         }
 
         [HttpGet("{id:int}")]
+        [AllowAnonymous]
         public async Task<ActionResult<ApartmentDto>> GetApartment(int id)
         {
             var apartment = await _context.Apartments
@@ -76,6 +81,10 @@ namespace ApartmentRental.Controllers.Api
                 return BadRequest(ModelState);
             }
 
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (userId is null) return Unauthorized();
+
             var apartment = new Apartment
             {
                 Title = dto.Title,
@@ -85,16 +94,13 @@ namespace ApartmentRental.Controllers.Api
                 FullAddress = dto.FullAddress,
                 Latitude = dto.Latitude,
                 Longitude = dto.Longitude,
-                LessorId = dto.LessorId,
+                LessorId = userId,
             };
 
             _context.Apartments.Add(apartment);
             await _context.SaveChangesAsync();
 
-            return CreatedAtAction(
-                nameof(GetApartment),
-                new { id = apartment.Id },
-                new { apartment.Id });
+            return CreatedAtAction(nameof(GetApartment), new { id = apartment.Id }, new { apartment.Id });
         }
 
         [HttpPut("{id:int}")]
