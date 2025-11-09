@@ -51,7 +51,6 @@ namespace ApartmentRental.Controllers
 
         public IActionResult Create()
         {
-            //ViewData["LessorId"] = new SelectList(_context.Users, "Id", "Id");
             return View();
         }
 
@@ -67,7 +66,6 @@ namespace ApartmentRental.Controllers
 
             if (!ModelState.IsValid)
             {
-                //ViewData["LessorId"] = new SelectList(_context.Users, "Id", "Id", apartment.LessorId);
                 return View(apartment);
             }
 
