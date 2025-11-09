@@ -2,7 +2,20 @@
 
 @{
     ViewData["Title"] = $"{Model.Title} – оренда в {Model.City}";
-    ViewData["MetaDescription"] = Model.Description ?? $"Оренда квартири в {Model.City}. Ціна {Model.Price}₴.";
+
+    var rawDescription = string.IsNullOrWhiteSpace(Model.Description)
+        ? $"Оренда квартири в {Model.City}. Ціна {Model.Price:N0} ₴ на місяць."
+        : Model.Description;
+
+    var normalized = rawDescription.Replace("\r", " ")
+                                  .Replace("\n", " ")
+                                  .Trim();
+
+    string metaDescription = normalized.Length > 160
+        ? normalized.Substring(0, 157) + "..."
+        : normalized;
+
+    ViewData["MetaDescription"] = metaDescription;
     ViewData["MetaImage"] = Model.Photos.FirstOrDefault()?.ImageUrl;
 }
 
