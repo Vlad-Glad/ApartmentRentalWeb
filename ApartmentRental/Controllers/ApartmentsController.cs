@@ -170,5 +170,22 @@ namespace ApartmentRental.Controllers
         {
             return _context.Apartments.Any(e => e.Id == id);
         }
+
+        [AllowAnonymous]
+        public async Task<IActionResult> Landing(int id)
+        {
+            var apartment = await _context.Apartments
+                .Include(a => a.Lessor)
+                .Include(a => a.Photos)
+                .FirstOrDefaultAsync(a => a.Id == id);
+
+            if (apartment == null)
+            {
+                return NotFound();
+            }
+
+            return View(apartment);
+        }
+
     }
 }

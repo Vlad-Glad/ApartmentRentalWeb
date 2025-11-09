@@ -1,13 +1,41 @@
 ﻿<!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - ApartmentRental</title>
+
+    <title>
+        @if (ViewData["Title"] != null)
+        {
+            @ViewData["Title"] @: - ApartmentRental
+        }
+        else
+        {
+            @:ApartmentRental
+        }
+    </title>
+
+    @if (ViewData["MetaDescription"] != null)
+    {
+        <meta name="description" content="@(ViewData["MetaDescription"])" />
+    }
+
+    <meta property="og:site_name" content="ApartmentRental" />
+    <meta property="og:title" content="@(ViewData["Title"] ?? "ApartmentRental")" />
+    <meta property="og:description" content="@(ViewData["MetaDescription"] ?? "Каталог оголошень оренди квартир.")" />
+    @if (ViewData["MetaImage"] != null)
+    {
+        <meta property="og:image" content="@(ViewData["MetaImage"])" />
+    }
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="@($"{Context.Request.Scheme}://{Context.Request.Host}{Context.Request.Path}")" />
+
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/ApartmentRental.styles.css" asp-append-version="true" />
 </head>
+
 <body>
     <header>
         <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">

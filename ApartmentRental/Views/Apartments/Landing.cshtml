@@ -1,0 +1,90 @@
+﻿@model ApartmentRental.Models.Apartment
+
+@{
+    ViewData["Title"] = $"{Model.Title} – оренда в {Model.City}";
+    ViewData["MetaDescription"] = Model.Description ?? $"Оренда квартири в {Model.City}. Ціна {Model.Price}₴.";
+    ViewData["MetaImage"] = Model.Photos.FirstOrDefault()?.ImageUrl;
+}
+
+<div class="container my-5">
+    <div class="row">
+        <div class="col-lg-8">
+            <section class="mb-4">
+                <h1 class="display-5 fw-bold">@Model.Title</h1>
+                <div class="h3 fw-bold text-primary">@Model.Price.ToString("N0") ₴ / місяць</div>
+            </section>
+
+            @if (Model.Photos != null && Model.Photos.Any())
+            {
+                <section class="mb-4">
+                    <div class="row g-2">
+                        @foreach (var photo in Model.Photos)
+                        {
+                            <div class="col-6 col-md-4">
+                                <img src="@photo.ImageUrl" class="img-fluid rounded" alt="Apartment photo" />
+                            </div>
+                        }
+                    </div>
+                </section>
+            }
+
+            <section id="description" class="mb-4">
+                <h2 class="h4">Опис</h2>
+                <p>
+                    @(string.IsNullOrWhiteSpace(Model.Description)
+                                        ? "Опис буде додано найближчим часом."
+                                        : Model.Description)
+                </p>
+            </section>
+
+            <section id="location" class="mb-4">
+                <h2 class="h4">Місцезнаходження</h2>
+                <p>
+                    Місто: <strong>@Model.City</strong><br />
+                    @if (!string.IsNullOrWhiteSpace(Model.FullAddress))
+                    {
+                        @:Адреса: <strong>@Model.FullAddress</strong><br />
+                    }
+                    @if (Model.Latitude.HasValue && Model.Longitude.HasValue)
+                    {
+                        @:Координати: @Model.Latitude, @Model.Longitude
+                    }
+                </p>
+                <div class="border rounded bg-light" style="height: 300px; display:flex; align-items:center; justify-content:center;">
+                    <span class="text-muted">Тут буде карта</span>
+                </div>
+            </section>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="position-sticky" style="top: 80px;">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <h2 class="h5 mb-3">Контакти</h2>
+                        <p class="mb-1">
+                            <strong>@(Model.Lessor?.FirstName ?? "Орендодавець") @(Model.Lessor?.LastName)</strong>
+                        </p>
+                        @if (!string.IsNullOrEmpty(Model.Lessor?.Email))
+                        {
+                            <p class="mb-1">
+                                Email: <a href="mailto:@Model.Lessor.Email">@Model.Lessor.Email</a>
+                            </p>
+                        }
+                        @if (!string.IsNullOrEmpty(Model.Lessor?.PhoneNumber))
+                        {
+                            <p class="mb-3">
+                                Телефон: <a href="tel:@Model.Lessor.PhoneNumber">@Model.Lessor.PhoneNumber</a>
+                            </p>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}
