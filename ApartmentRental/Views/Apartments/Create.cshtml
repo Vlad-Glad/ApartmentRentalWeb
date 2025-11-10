@@ -30,26 +30,23 @@
                 </div>
                 <span asp-validation-for="Price" class="text-danger"></span>
             </div>
-            <div class="form-group">
-                <label asp-for="City" class="control-label"></label>
-                <input asp-for="City" class="form-control" />
-                <span asp-validation-for="City" class="text-danger"></span>
-            </div>
 
             <div class="form-group">
                 <label asp-for="FullAddress" class="control-label"></label>
-                <input asp-for="FullAddress" class="form-control" id="addressInput" placeholder="Вкажіть місто, вулиця та номер"/>
+                <input asp-for="FullAddress" class="form-control" id="addressInput" placeholder="Вкажіть місто, вулицю та номер"/>
                 <span asp-validation-for="FullAddress" class="text-danger"></span>
             </div>
 
             <div class="mb-2">
                 <button type="button" id="findOnMapBtn" class="btn btn-outline-secondary">
-                    Знайти на мапі
+                    Пошук адреси
                 </button>
             </div>
 
             <div id="create-map" class="border rounded mb-3" style="height: 300px;"></div>
 
+            <input type="hidden" id="IsAddressValid" name="IsAddressValid" value="false" />
+            <input type="hidden" asp-for="City" id="City" />
             <input type="hidden" asp-for="Latitude" id="Latitude" />
             <input type="hidden" asp-for="Longitude" id="Longitude" />
 
@@ -84,10 +81,27 @@
 
             document.getElementById('findOnMapBtn')
                 .addEventListener('click', onFindOnMap);
+
+            const addressInput = document.getElementById('addressInput');
+            const validFlag = document.getElementById('IsAddressValid');
+            const latInput = document.getElementById('Latitude');
+            const lonInput = document.getElementById('Longitude');
+
+            if (addressInput && validFlag && latInput && lonInput) {
+                addressInput.addEventListener('input', () => {
+                    validFlag.value = "false";
+                    latInput.value = "";
+                    lonInput.value = "";
+                });
+            }
         });
 
         async function onFindOnMap() {
             const query = document.getElementById('addressInput').value;
+            const validFlag = document.getElementById('IsAddressValid');
+
+            validFlag.value = "false";
+
             if (!query || query.length < 3) {
                 alert('Введіть коректну адресу (мінімум 3 символи).');
                 return;
@@ -98,7 +112,8 @@
             try {
                 const response = await fetch(url, {
                     headers: {
-                        'Accept-Language': 'uk'
+                        'Accept-Language': 'uk',
+                        'User-Agent': 'ApartmentRentalApp/1.0'
                     }
                 });
 
@@ -124,6 +139,7 @@
                     "";
 
                 document.getElementById("City").value = city;
+
                 if (place.display_name) {
                     document.getElementById("addressInput").value = place.display_name;
                 }
@@ -145,9 +161,12 @@
                 }
                 createMarker = L.marker([lat, lon]).addTo(createMap);
 
+                validFlag.value = "true";
+
             } catch (err) {
                 console.error(err);
                 alert('Сталася помилка при пошуку адреси.');
+                validFlag.value = "false";
             }
         }
     </script>

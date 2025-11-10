@@ -79,11 +79,18 @@ namespace ApartmentRental.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create(Apartment apartment)
+        public async Task<IActionResult> Create(Apartment apartment, bool IsAddressValid)
         {
             ModelState.Remove("LessorId");
             ModelState.Remove("Lessor");
             ModelState.Remove("Photos");
+
+            if (!IsAddressValid || apartment.Latitude == null || apartment.Longitude == null)
+            {
+                ModelState.AddModelError("FullAddress",
+                    "Будь ласка, натисніть «Пошук адреси» і оберіть коректну адресу з підказки.");
+            }
+
 
             if (!ModelState.IsValid)
             {
@@ -124,12 +131,21 @@ namespace ApartmentRental.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, Apartment apartment)
+        public async Task<IActionResult> Edit(int id, Apartment apartment, bool IsAddressValid)
         {
-
             if (id != apartment.Id)
             {
                 return NotFound();
+            }
+
+            ModelState.Remove("LessorId");
+            ModelState.Remove("Lessor");
+            ModelState.Remove("Photos");
+
+            if (!IsAddressValid || apartment.Latitude == null || apartment.Longitude == null)
+            {
+                ModelState.AddModelError("FullAddress",
+                    "Будь ласка, натисніть «Пошук адреси» і оберіть коректну адресу з підказки.");
             }
 
             var apartmentToUpdate = await _context.Apartments.FindAsync(id);
@@ -144,34 +160,39 @@ namespace ApartmentRental.Controllers
                 return Forbid();
             }
 
-            if (ModelState.IsValid)
+            if (!ModelState.IsValid)
             {
-                try
-                {
-                    apartmentToUpdate.Title = apartment.Title;
-                    apartmentToUpdate.Description = apartment.Description;
-                    apartmentToUpdate.Price = apartment.Price;
-                    apartmentToUpdate.City = apartment.City;
-                    apartmentToUpdate.FullAddress = apartment.FullAddress;
-
-                    _context.Update(apartment);
-                    await _context.SaveChangesAsync();
-                }
-                catch (DbUpdateConcurrencyException)
-                {
-                    if (!ApartmentExists(apartment.Id))
-                    {
-                        return NotFound();
-                    }
-                    else
-                    {
-                        throw;
-                    }
-                }
-                return RedirectToAction(nameof(Index));
+                return View(apartment);
             }
-            return View(apartment);
+
+            try
+            {
+                apartmentToUpdate.Title = apartment.Title;
+                apartmentToUpdate.Description = apartment.Description;
+                apartmentToUpdate.Price = apartment.Price;
+
+                apartmentToUpdate.City = apartment.City;
+                apartmentToUpdate.FullAddress = apartment.FullAddress;
+                apartmentToUpdate.Latitude = apartment.Latitude;
+                apartmentToUpdate.Longitude = apartment.Longitude;
+
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                if (!ApartmentExists(apartment.Id))
+                {
+                    return NotFound();
+                }
+                else
+                {
+                    throw;
+                }
+            }
+
+            return RedirectToAction(nameof(Index));
         }
+
 
         public async Task<IActionResult> Delete(int? id)
         {
