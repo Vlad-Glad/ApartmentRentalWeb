@@ -1,7 +1,29 @@
 ﻿@model IEnumerable<ApartmentRental.Models.Apartment>
 
 @{
-    ViewData["Title"] = "Index";
+    ViewData["Title"] = "Apartments";
+}
+
+<h1 class="h3 mb-3">Список квартир</h1>
+
+<form method="get" asp-action="Index" class="mb-3">
+    <div class="row g-2 align-items-end">
+        <div class="col-md-4">
+            <label for="city" class="form-label">Місто</label>
+            <select id="city" name="city" class="form-select"
+                    asp-items="ViewBag.Cities">
+                <option value="">Усі міста</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <button type="submit" class="btn btn-primary w-100">Фільтрувати</button>
+        </div>
+    </div>
+</form>
+
+@if (!string.IsNullOrEmpty(ViewBag.SelectedCity))
+{
+    <p><strong>Вибране місто:</strong> @ViewBag.SelectedCity</p>
 }
 
 <p class="mb-3">

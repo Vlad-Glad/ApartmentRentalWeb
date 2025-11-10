@@ -26,11 +26,33 @@ namespace ApartmentRental.Controllers
         }
 
         [AllowAnonymous]
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(string? city)
         {
-            var applicationDbContext = _context.Apartments.Include(a => a.Lessor);
-            return View(await applicationDbContext.ToListAsync());
+            var apartmentsQuery = _context.Apartments
+                .Include(a => a.Lessor)
+                .AsQueryable();
+
+            var cities = await _context.Apartments
+                .Where(a => a.City != null)
+                .Select(a => a.City)
+                .Distinct()
+                .OrderBy(c => c)
+                .ToListAsync();
+
+            if (!string.IsNullOrEmpty(city))
+            {
+                apartmentsQuery = apartmentsQuery.Where(a => a.City == city);
+            }
+
+            ViewBag.Cities = new SelectList(cities);
+            ViewBag.SelectedCity = city;
+            ViewBag.Cities = new SelectList(cities, city);
+
+
+            var apartments = await apartmentsQuery.ToListAsync();
+            return View(apartments);
         }
+
 
         public async Task<IActionResult> Details(int? id)
         {

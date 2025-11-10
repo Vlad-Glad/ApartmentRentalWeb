@@ -38,7 +38,7 @@
 
             <div class="form-group">
                 <label asp-for="FullAddress" class="control-label"></label>
-                <input asp-for="FullAddress" class="form-control" id="addressInput" />
+                <input asp-for="FullAddress" class="form-control" id="addressInput" placeholder="Вкажіть місто, вулиця та номер"/>
                 <span asp-validation-for="FullAddress" class="text-danger"></span>
             </div>
 
@@ -114,6 +114,20 @@
                 }
 
                 const place = results[0];
+
+                const address = place.address || {};
+                const city =
+                    address.city ||
+                    address.town ||
+                    address.village ||
+                    address.state ||
+                    "";
+
+                document.getElementById("City").value = city;
+                if (place.display_name) {
+                    document.getElementById("addressInput").value = place.display_name;
+                }
+
                 const lat = parseFloat(place.lat);
                 const lon = parseFloat(place.lon);
 
