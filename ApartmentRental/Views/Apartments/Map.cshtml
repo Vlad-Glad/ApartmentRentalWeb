@@ -1,0 +1,102 @@
+﻿@{
+    ViewData["Title"] = "Квартири на мапі";
+}
+
+<div class="container my-4">
+    <h1 class="h3 mb-3">Квартири на мапі</h1>
+
+    <div class="row mb-3">
+        <div class="col-md-4">
+            <label for="cityFilter" class="form-label">Фільтр за містом</label>
+            <select id="cityFilter" class="form-select">
+                <option value="">Усі міста</option>
+            </select>
+        </div>
+    </div>
+
+    <div id="apartments-map" class="border rounded" style="height: 500px;"></div>
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener("DOMContentLoaded", async function () {
+            var map = L.map('apartments-map').setView([49.0, 31.0], 6);
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '&copy; OpenStreetMap contributors'
+            }).addTo(map);
+
+            let markers = [];
+            let allApartments = [];
+
+            async function loadApartments() {
+                const response = await fetch('/api/apartments');
+                if (!response.ok) {
+                    console.error('Failed to load apartments');
+                    return;
+                }
+                allApartments = await response.json();
+                initCityFilter();
+                renderMarkers();
+            }
+
+            function initCityFilter() {
+                const citySelect = document.getElementById('cityFilter');
+                const cities = [...new Set(allApartments
+                    .filter(a => a.city)
+                    .map(a => a.city))].sort();
+
+                cities.forEach(city => {
+                    const opt = document.createElement('option');
+                    opt.value = city;
+                    opt.textContent = city;
+                    citySelect.appendChild(opt);
+                });
+
+                citySelect.addEventListener('change', renderMarkers);
+            }
+
+            function renderMarkers() {
+                markers.forEach(m => map.removeLayer(m));
+                markers = [];
+
+                const cityFilter = document.getElementById('cityFilter').value;
+
+                const filtered = allApartments.filter(a => {
+                    if (cityFilter && a.city !== cityFilter) return false;
+                    return a.latitude != null && a.longitude != null;
+                });
+
+                if (filtered.length === 0) return;
+
+                const bounds = [];
+
+                filtered.forEach(a => {
+                    const lat = a.latitude;
+                    const lng = a.longitude;
+                    const marker = L.marker([lat, lng]).addTo(map);
+
+                    const popupHtml = `
+                        <div>
+                            <strong>${a.title ?? 'Квартира'}</strong><br/>
+                            ${a.city ?? ''}<br/>
+                            Ціна: ${a.price} ₴<br/>
+                            <a href="/Apartments/Landing/${a.id}">Детальніше</a>
+                        </div>
+                    `;
+
+                    marker.bindPopup(popupHtml);
+                    markers.push(marker);
+                    bounds.push([lat, lng]);
+                });
+
+                if (bounds.length > 0) {
+                    map.fitBounds(bounds, { padding: [30, 30] });
+                }
+            }
+
+            await loadApartments();
+        });
+    </script>
+}

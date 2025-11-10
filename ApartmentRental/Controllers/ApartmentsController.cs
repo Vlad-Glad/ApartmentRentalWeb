@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace ApartmentRental.Controllers
 {
+
     [Authorize]
     public class ApartmentsController : Controller
     {
@@ -56,13 +57,11 @@ namespace ApartmentRental.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("Title,Description,Price,City,FullAddress")] Apartment apartment)
+        public async Task<IActionResult> Create(Apartment apartment)
         {
             ModelState.Remove("LessorId");
             ModelState.Remove("Lessor");
             ModelState.Remove("Photos");
-            ModelState.Remove("Latitude");
-            ModelState.Remove("Longitude");
 
             if (!ModelState.IsValid)
             {
@@ -103,17 +102,36 @@ namespace ApartmentRental.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("Id,Title,Description,Price,City,FullAddress,LessorId")] Apartment apartment)
+        public async Task<IActionResult> Edit(int id, Apartment apartment)
         {
+
             if (id != apartment.Id)
             {
                 return NotFound();
+            }
+
+            var apartmentToUpdate = await _context.Apartments.FindAsync(id);
+            if (apartmentToUpdate == null)
+            {
+                return NotFound();
+            }
+
+            var currentUserId = _userManager.GetUserId(User);
+            if (apartmentToUpdate.LessorId != currentUserId)
+            {
+                return Forbid();
             }
 
             if (ModelState.IsValid)
             {
                 try
                 {
+                    apartmentToUpdate.Title = apartment.Title;
+                    apartmentToUpdate.Description = apartment.Description;
+                    apartmentToUpdate.Price = apartment.Price;
+                    apartmentToUpdate.City = apartment.City;
+                    apartmentToUpdate.FullAddress = apartment.FullAddress;
+
                     _context.Update(apartment);
                     await _context.SaveChangesAsync();
                 }
@@ -130,7 +148,6 @@ namespace ApartmentRental.Controllers
                 }
                 return RedirectToAction(nameof(Index));
             }
-            ViewData["LessorId"] = new SelectList(_context.Users, "Id", "Id", apartment.LessorId);
             return View(apartment);
         }
 
@@ -157,11 +174,19 @@ namespace ApartmentRental.Controllers
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
             var apartment = await _context.Apartments.FindAsync(id);
-            if (apartment != null)
+
+            if (apartment == null)
             {
-                _context.Apartments.Remove(apartment);
+                return RedirectToAction(nameof(Index));
             }
 
+            var currentUserId = _userManager.GetUserId(User);
+            if (apartment.LessorId != currentUserId)
+            {
+                return Forbid();
+            }
+
+            _context.Apartments.Remove(apartment);
             await _context.SaveChangesAsync();
             return RedirectToAction(nameof(Index));
         }
@@ -187,5 +212,10 @@ namespace ApartmentRental.Controllers
             return View(apartment);
         }
 
+        
+        public IActionResult Map()
+        {
+            return View();
+        }
     }
 }

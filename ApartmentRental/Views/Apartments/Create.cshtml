@@ -35,14 +35,28 @@
                 <input asp-for="City" class="form-control" />
                 <span asp-validation-for="City" class="text-danger"></span>
             </div>
+
             <div class="form-group">
                 <label asp-for="FullAddress" class="control-label"></label>
-                <input asp-for="FullAddress" class="form-control" />
+                <input asp-for="FullAddress" class="form-control" id="addressInput" />
                 <span asp-validation-for="FullAddress" class="text-danger"></span>
             </div>
+
+            <div class="mb-2">
+                <button type="button" id="findOnMapBtn" class="btn btn-outline-secondary">
+                    Знайти на мапі
+                </button>
+            </div>
+
+            <div id="create-map" class="border rounded mb-3" style="height: 300px;"></div>
+
+            <input type="hidden" asp-for="Latitude" id="Latitude" />
+            <input type="hidden" asp-for="Longitude" id="Longitude" />
+
             <div class="form-group">
                 <input type="submit" value="Create" class="btn btn-primary" />
             </div>
+
         </form>
     </div>
 </div>
@@ -52,5 +66,76 @@
 </div>
 
 @section Scripts {
-    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+
+    <script>
+        let createMap;
+        let createMarker;
+
+        document.addEventListener("DOMContentLoaded", function () {
+
+            createMap = L.map('create-map').setView([49.0, 31.0], 6);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '&copy; OpenStreetMap contributors'
+            }).addTo(createMap);
+
+            document.getElementById('findOnMapBtn')
+                .addEventListener('click', onFindOnMap);
+        });
+
+        async function onFindOnMap() {
+            const query = document.getElementById('addressInput').value;
+            if (!query || query.length < 3) {
+                alert('Введіть коректну адресу (мінімум 3 символи).');
+                return;
+            }
+
+            const url = `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=1&q=${encodeURIComponent(query)}`;
+
+            try {
+                const response = await fetch(url, {
+                    headers: {
+                        'Accept-Language': 'uk'
+                    }
+                });
+
+                if (!response.ok) {
+                    alert('Помилка запиту до сервісу геокодування.');
+                    return;
+                }
+
+                const results = await response.json();
+                if (!results || results.length === 0) {
+                    alert('Нічого не знайдено. Спробуйте уточнити адресу.');
+                    return;
+                }
+
+                const place = results[0];
+                const lat = parseFloat(place.lat);
+                const lon = parseFloat(place.lon);
+
+                document.getElementById('Latitude').value = lat.toString().replace(',', '.');
+                document.getElementById('Longitude').value = lon.toString().replace(',', '.');
+
+                if (place.display_name) {
+                    document.getElementById('addressInput').value = place.display_name;
+                }
+
+                createMap.setView([lat, lon], 15);
+
+                if (createMarker) {
+                    createMap.removeLayer(createMarker);
+                }
+                createMarker = L.marker([lat, lon]).addTo(createMap);
+
+            } catch (err) {
+                console.error(err);
+                alert('Сталася помилка при пошуку адреси.');
+            }
+        }
+    </script>
 }
+
