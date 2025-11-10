@@ -1,7 +1,8 @@
-using Microsoft.AspNetCore.Identity;
 using ApartmentRental.Data;
-using Microsoft.EntityFrameworkCore;
 using ApartmentRental.Models;
+using ApartmentRental.Services;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -18,6 +19,9 @@ builder.Services.AddIdentityCore<ApplicationUser>(options => options.SignIn.Requ
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
+
+
+builder.Services.AddScoped<IBlobService, BlobService>();
 
 var app = builder.Build();
 

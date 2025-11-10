@@ -1,14 +1,15 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+﻿using ApartmentRental.Data;
+using ApartmentRental.Models;
+using ApartmentRental.Services;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
-using ApartmentRental.Data;
-using ApartmentRental.Models;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Authorization;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace ApartmentRental.Controllers
 {
@@ -18,11 +19,13 @@ namespace ApartmentRental.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly IBlobService _blobService;
 
-        public ApartmentsController(ApplicationDbContext context, UserManager<ApplicationUser> userManager)
+        public ApartmentsController(ApplicationDbContext context, UserManager<ApplicationUser> userManager, IBlobService blobService )
         {
             _context = context;
             _userManager = userManager;
+            _blobService = blobService;
         }
 
         [AllowAnonymous]
@@ -79,7 +82,7 @@ namespace ApartmentRental.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create(Apartment apartment, bool IsAddressValid)
+        public async Task<IActionResult> Create(Apartment apartment, List<IFormFile> photos, bool IsAddressValid)
         {
             ModelState.Remove("LessorId");
             ModelState.Remove("Lessor");
@@ -108,7 +111,27 @@ namespace ApartmentRental.Controllers
             _context.Add(apartment);
             await _context.SaveChangesAsync();
 
-            return RedirectToAction(nameof(Index));
+            if (photos != null && photos.Count > 0)
+            {
+                foreach (var file in photos)
+                {
+                    if (file.Length == 0) continue;
+
+                    using var stream = file.OpenReadStream();
+                    var url = await _blobService.UploadAsync(stream, file.FileName, file.ContentType);
+
+                    var photo = new Photo
+                    {
+                        ApartmentId = apartment.Id,
+                        ImageUrl = url
+                    };
+
+                    _context.Photos.Add(photo);
+                }
+
+            }
+
+                return RedirectToAction(nameof(Index));
         }
 
         public async Task<IActionResult> Edit(int? id)
@@ -131,7 +154,7 @@ namespace ApartmentRental.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, Apartment apartment, bool IsAddressValid)
+        public async Task<IActionResult> Edit(int id, Apartment apartment, List<IFormFile> photos, bool IsAddressValid)
         {
             if (id != apartment.Id)
             {
@@ -175,6 +198,26 @@ namespace ApartmentRental.Controllers
                 apartmentToUpdate.FullAddress = apartment.FullAddress;
                 apartmentToUpdate.Latitude = apartment.Latitude;
                 apartmentToUpdate.Longitude = apartment.Longitude;
+
+                if (photos != null && photos.Count > 0)
+                {
+                    foreach (var file in photos)
+                    {
+                        if (file.Length == 0) continue;
+
+                        using var stream = file.OpenReadStream();
+                        var url = await _blobService.UploadAsync(stream, file.FileName, file.ContentType);
+
+                        var photo = new Photo
+                        {
+                            ApartmentId = apartment.Id,
+                            ImageUrl = url
+                        };
+
+                        _context.Photos.Add(photo);
+                    }
+
+                }
 
                 await _context.SaveChangesAsync();
             }

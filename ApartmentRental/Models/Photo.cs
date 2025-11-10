@@ -15,6 +15,6 @@ namespace ApartmentRental.Models
 
         public int ApartmentId { get; set; }
 
-        public virtual required Apartment Apartment { get; set; }
+        public virtual Apartment? Apartment { get; set; }
     }
 }
