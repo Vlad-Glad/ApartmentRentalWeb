@@ -31,12 +31,15 @@
             let allApartments = [];
 
             async function loadApartments() {
-                const response = await fetch('/api/apartments');
+                const response = await fetch('/api/apartments?skip=0&limit=100');
                 if (!response.ok) {
                     console.error('Failed to load apartments');
                     return;
                 }
-                allApartments = await response.json();
+
+                const result = await response.json();
+                allApartments = result.items || [];
+
                 initCityFilter();
                 renderMarkers();
             }
