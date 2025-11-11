@@ -129,4 +129,17 @@
                 .bindPopup(@Json.Serialize(Model.Title));
         });
     </script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            if (typeof gtag === "function") {
+                gtag('event', 'apartment_view', {
+                    'apartment_id': '@Model.Id',
+                    'city': '@Model.City',
+                    'price': @Model.Price,
+                    'has_photos': @(Model.Photos != null && Model.Photos.Any() ? "true" : "false")
+                });
+            }
+        });
+    </script>
 }

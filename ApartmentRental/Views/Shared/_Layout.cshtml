@@ -21,6 +21,7 @@
         <meta name="description" content="@(ViewData["MetaDescription"])" />
     }
 
+    <!-- OG-теги -->
     <meta property="og:site_name" content="ApartmentRental" />
     <meta property="og:title" content="@(ViewData["Title"] ?? "ApartmentRental")" />
     <meta property="og:description" content="@(ViewData["MetaDescription"] ?? "Каталог оголошень оренди квартир.")" />
@@ -30,6 +31,16 @@
     }
     <meta property="og:type" content="website" />
     <meta property="og:url" content="@($"{Context.Request.Scheme}://{Context.Request.Host}{Context.Request.Path}")" />
+
+    <!-- Google Analytics 4 -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
+
+        gtag('config', 'G-JE04GD0ZE3');
+    </script>
 
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
