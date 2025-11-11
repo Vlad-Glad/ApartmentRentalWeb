@@ -31,6 +31,8 @@ builder.Services.AddAuthentication()
         };
     });
 
+builder.Services.AddHttpClient<IGeocodingService, NominatimGeocodingService>();
+
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
