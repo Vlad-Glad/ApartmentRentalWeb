@@ -128,7 +128,7 @@ namespace ApartmentRental.Controllers
 
                     _context.Photos.Add(photo);
                 }
-
+                await _context.SaveChangesAsync();
             }
 
                 return RedirectToAction(nameof(Index));
@@ -138,7 +138,9 @@ namespace ApartmentRental.Controllers
         {
             if (id == null) return NotFound();
 
-            var apartment = await _context.Apartments.FindAsync(id);
+            var apartment = await _context.Apartments
+                .Include(a => a.Photos)
+                .FirstOrDefaultAsync(a => a.Id == id);
 
             if (apartment == null) return NotFound();
 
@@ -201,6 +203,17 @@ namespace ApartmentRental.Controllers
 
                 if (photos != null && photos.Count > 0)
                 {
+
+                    if (apartmentToUpdate.Photos != null && apartmentToUpdate.Photos.Any())
+                    {
+                        foreach (var oldPhoto in apartmentToUpdate.Photos)
+                        {
+                            await _blobService.DeleteAsync(oldPhoto.ImageUrl);
+                        }
+
+                        _context.Photos.RemoveRange(apartmentToUpdate.Photos);
+                    }
+
                     foreach (var file in photos)
                     {
                         if (file.Length == 0) continue;
@@ -210,7 +223,7 @@ namespace ApartmentRental.Controllers
 
                         var photo = new Photo
                         {
-                            ApartmentId = apartment.Id,
+                            ApartmentId = apartmentToUpdate.Id,
                             ImageUrl = url
                         };
 
@@ -259,7 +272,9 @@ namespace ApartmentRental.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
-            var apartment = await _context.Apartments.FindAsync(id);
+            var apartment = await _context.Apartments
+                .Include(a => a.Photos)
+                .FirstOrDefaultAsync(a => a.Id == id);
 
             if (apartment == null)
             {
@@ -270,6 +285,14 @@ namespace ApartmentRental.Controllers
             if (apartment.LessorId != currentUserId)
             {
                 return Forbid();
+            }
+
+            if (apartment.Photos != null && apartment.Photos.Any())
+            {
+                foreach (var photo in apartment.Photos)
+                {
+                    await _blobService.DeleteAsync(photo.ImageUrl);
+                }
             }
 
             _context.Apartments.Remove(apartment);

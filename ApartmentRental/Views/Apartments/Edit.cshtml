@@ -10,7 +10,7 @@
 <hr />
 <div class="row">
     <div class="col-md-4">
-        <form asp-action="Edit">
+        <form asp-action="Edit" enctype="multipart/form-data">
             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
 
             <input type="hidden" asp-for="Id" />
@@ -49,6 +49,36 @@
             </div>
 
             <div id="create-map" class="border rounded mb-3" style="height: 300px;"></div>
+
+            @if (Model.Photos != null && Model.Photos.Any())
+            {
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Поточні фото</label>
+                    <div class="row g-2">
+                        @foreach (var photo in Model.Photos)
+                        {
+                            <div class="col-4 col-md-3">
+                                <div class="border rounded overflow-hidden" style="height: 100px; display: flex; align-items: center; justify-content: center;">
+                                    <img src="@photo.ImageUrl" alt="Apartment photo" class="img-fluid" style="max-height: 100%; max-width: 100%; object-fit: cover;" />
+                                </div>
+                            </div>
+                        }
+                    </div>
+                    <small class="form-text text-muted">
+                        Після завантаження нових фото всі старі будуть замінені.
+                    </small>
+                </div>
+            }
+
+            <div class="form-group">
+                <label class="control-label">Нові фото</label>
+                <input type="file" name="photos" class="form-control" multiple />
+                <small class="form-text text-muted">
+                    Якщо обрати нові фото, усі старі будуть замінені.
+                </small>
+            </div>
+
+
 
             <input type="hidden" asp-for="Latitude" id="Latitude" />
             <input type="hidden" asp-for="Longitude" id="Longitude" />

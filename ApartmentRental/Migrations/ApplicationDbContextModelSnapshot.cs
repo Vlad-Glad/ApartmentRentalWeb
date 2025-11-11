@@ -66,7 +66,7 @@ namespace ApartmentRental.Migrations
 
                     b.HasIndex("LessorId");
 
-                    b.ToTable("Apartments");
+                    b.ToTable("Apartments", (string)null);
                 });
 
             modelBuilder.Entity("ApartmentRental.Models.ApplicationUser", b =>
@@ -165,7 +165,7 @@ namespace ApartmentRental.Migrations
 
                     b.HasIndex("ApartmentId");
 
-                    b.ToTable("Photos");
+                    b.ToTable("Photos", (string)null);
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>
