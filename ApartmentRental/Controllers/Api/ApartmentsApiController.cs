@@ -76,6 +76,8 @@ namespace ApartmentRental.Controllers.Api
         [HttpPost]
         public async Task<IActionResult> CreateApartment([FromBody] ApartmentCreateDto dto)
         {
+            ModelState.Remove("LessorId");
+
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
