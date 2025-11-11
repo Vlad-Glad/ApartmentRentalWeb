@@ -1,5 +1,6 @@
 ﻿using ApartmentRental.Data;
 using ApartmentRental.Models;
+using ApartmentRental.Models.DTO;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -21,26 +22,54 @@ namespace ApartmentRental.Controllers.Api
 
         [HttpGet]
         [AllowAnonymous]
-        public async Task<ActionResult<IEnumerable<ApartmentDto>>> GetApartments()
+        public async Task<ActionResult<PagedResultDto<ApartmentDto>>> GetApartments(
+            [FromQuery] int skip = 0,
+            [FromQuery] int limit = 10)
         {
-            var apartments = await _context.Apartments
-                .Include(a => a.Lessor)
+            if (limit <= 0) limit = 10;
+            if (limit > 100) limit = 100;
+
+            var baseQuery = _context.Apartments.AsNoTracking();
+
+            var totalCount = await baseQuery.CountAsync();
+
+            var items = await baseQuery
+                .OrderBy(a => a.Id)
+                .Skip(skip)
+                .Take(limit)
                 .Select(a => new ApartmentDto
                 {
                     Id = a.Id,
                     Title = a.Title,
-                    Description = a.Description,
-                    Price = a.Price,
                     City = a.City,
-                    FullAddress = a.FullAddress,
+                    Price = a.Price,
                     Latitude = a.Latitude,
                     Longitude = a.Longitude,
-                    LessorId = a.LessorId,
-                    LessorEmail = a.Lessor != null ? a.Lessor.Email : null
                 })
                 .ToListAsync();
 
-            return Ok(apartments);
+            string? nextLink = null;
+
+            if (skip + limit < totalCount)
+            {
+                var nextSkip = skip + limit;
+
+                var request = HttpContext.Request;
+                var baseUrl = $"{request.Scheme}://{request.Host}{request.Path}";
+
+                nextLink = $"{baseUrl}?skip={nextSkip}&limit={limit}";
+            }
+
+            var result = new PagedResultDto<ApartmentDto>
+            {
+                Items = items,
+                TotalCount = totalCount,
+                Skip = skip,
+                Limit = limit,
+                NextLink = nextLink
+            };
+
+            return Ok(result);
         }
 
         [HttpGet("{id:int}")]
