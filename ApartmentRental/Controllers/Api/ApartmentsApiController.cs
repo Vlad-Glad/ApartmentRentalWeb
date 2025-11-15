@@ -1,6 +1,7 @@
 ﻿using ApartmentRental.Data;
 using ApartmentRental.Models;
 using ApartmentRental.Models.DTO;
+using ApartmentRental.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -14,10 +15,12 @@ namespace ApartmentRental.Controllers.Api
     public class ApartmentsController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
+        private readonly IGeocodingService _geocodingService;
 
-        public ApartmentsController(ApplicationDbContext context)
+        public ApartmentsController(ApplicationDbContext context, IGeocodingService geocodingService)
         {
             _context = context;
+            _geocodingService = geocodingService;
         }
 
         [HttpGet]
@@ -105,23 +108,42 @@ namespace ApartmentRental.Controllers.Api
         [HttpPost]
         public async Task<IActionResult> CreateApartment([FromBody] ApartmentCreateDto dto)
         {
-            ModelState.Remove("LessorId");
-
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
 
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-
             if (userId is null) return Unauthorized();
+
+            if (string.IsNullOrWhiteSpace(dto.City) || dto.Latitude == null || dto.Longitude == null)
+            {
+                var suggestions = await _geocodingService.SearchAsync(dto.FullAddress, limit: 1);
+
+                var first = suggestions.FirstOrDefault();
+                if (first == null)
+                {
+                    return BadRequest(new
+                    {
+                        message = "Не вдалося знайти адресу через геокодер. " +
+                                  "Уточніть FullAddress або вкажіть City/Latitude/Longitude вручну."
+                    });
+                }
+
+                dto.City = first.City;
+                dto.Latitude = first.Latitude;
+                dto.Longitude = first.Longitude;
+
+                dto.FullAddress = first.Label;
+            }
+
 
             var apartment = new Apartment
             {
                 Title = dto.Title,
                 Description = dto.Description,
                 Price = dto.Price,
-                City = dto.City,
+                City = dto.City!,
                 FullAddress = dto.FullAddress,
                 Latitude = dto.Latitude,
                 Longitude = dto.Longitude,

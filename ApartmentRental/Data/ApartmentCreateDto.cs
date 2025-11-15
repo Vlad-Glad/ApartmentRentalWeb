@@ -1,16 +1,22 @@
-﻿namespace ApartmentRental.Data
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace ApartmentRental.Data
 {
     public class ApartmentCreateDto
     {
-        public string Title { get; set; }
+        [Required]
+        public string Title { get; set; } = default!;
+
         public string? Description { get; set; }
+
+        [Required]
         public decimal Price { get; set; }
-        public string City { get; set; }
-        public string? FullAddress { get; set; }
+
+        [Required]
+        public string FullAddress { get; set; } = default!;
+
+        public string? City { get; set; }
         public double? Latitude { get; set; }
         public double? Longitude { get; set; }
-
-        // Lessor id is allowed to be in json for now
-        public string LessorId { get; set; }
     }
 }
