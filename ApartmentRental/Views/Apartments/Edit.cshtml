@@ -1,95 +1,109 @@
 ﻿@model ApartmentRental.Models.Apartment
 
 @{
-    ViewData["Title"] = "Edit";
+    ViewData["Title"] = "Edit apartment";
 }
 
-<h1>Edit</h1>
-
-<h4>Apartment</h4>
-<hr />
-<div class="row">
-    <div class="col-md-4">
-        <form asp-action="Edit" enctype="multipart/form-data">
-            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-
-            <input type="hidden" asp-for="Id" />
-
-            <div class="form-group">
-                <label asp-for="Title" class="control-label"></label>
-                <input asp-for="Title" class="form-control" />
-                <span asp-validation-for="Title" class="text-danger"></span>
-            </div>
-
-            <div class="form-group">
-                <label asp-for="Description" class="control-label"></label>
-                <input asp-for="Description" class="form-control" />
-                <span asp-validation-for="Description" class="text-danger"></span>
-            </div>
-
-            <div class="form-group">
-                <label asp-for="Price" class="control-label"></label>
-                <div class="input-group">
-                    <input asp-for="Price" class="form-control" />
-                    <span class="input-group-text">₴/міс</span>
-                </div>
-                <span asp-validation-for="Price" class="text-danger"></span>
-            </div>
-
-            <div class="form-group">
-                <label asp-for="FullAddress" class="control-label"></label>
-                <input asp-for="FullAddress" class="form-control" id="addressInput" />
-                <span asp-validation-for="FullAddress" class="text-danger"></span>
-            </div>
-
-            <div class="mb-2">
-                <button type="button" id="findOnMapBtn" class="btn btn-outline-secondary">
-                    Пошук адреси
-                </button>
-            </div>
-
-            <div id="create-map" class="border rounded mb-3" style="height: 300px;"></div>
-
-            @if (Model.Photos != null && Model.Photos.Any())
-            {
-                <div class="mb-3">
-                    <label class="form-label fw-bold">Поточні фото</label>
-                    <div class="row g-2">
-                        @foreach (var photo in Model.Photos)
-                        {
-                            <div class="col-4 col-md-3">
-                                <div class="border rounded overflow-hidden" style="height: 100px; display: flex; align-items: center; justify-content: center;">
-                                    <img src="@photo.ImageUrl" alt="Apartment photo" class="img-fluid" style="max-height: 100%; max-width: 100%; object-fit: cover;" />
-                                </div>
-                            </div>
-                        }
+<div class="row justify-content-center">
+    <div class="col-lg-7">
+        <div class="card app-card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <div>
+                        <h1 class="h4 mb-1">Edit apartment</h1>
+                        <div class="app-muted">Update details, address and photos.</div>
                     </div>
-                    <small class="form-text text-muted">
-                        Після завантаження нових фото всі старі будуть замінені.
-                    </small>
+                    <a asp-action="Index" class="btn btn-outline-secondary btn-sm app-pill">
+                        <i class="bi bi-arrow-left me-1"></i> Back
+                    </a>
                 </div>
-            }
 
-            <div class="form-group">
-                <label class="control-label">Нові фото</label>
-                <input type="file" name="photos" class="form-control" multiple />
-                <small class="form-text text-muted">
-                    Якщо обрати нові фото, усі старі будуть замінені.
-                </small>
+                <form asp-action="Edit" enctype="multipart/form-data">
+                    <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+                    <input type="hidden" asp-for="Id" />
+
+                    <div class="mb-3">
+                        <label asp-for="Title" class="form-label"></label>
+                        <input asp-for="Title" class="form-control" />
+                        <span asp-validation-for="Title" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Description" class="form-label"></label>
+                        <textarea asp-for="Description" class="form-control" rows="4"></textarea>
+                        <span asp-validation-for="Description" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Price" class="form-label"></label>
+                        <div class="input-group">
+                            <input asp-for="Price" class="form-control" />
+                            <span class="input-group-text">$/month</span>
+                        </div>
+                        <span asp-validation-for="Price" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-2">
+                        <label asp-for="FullAddress" class="form-label"></label>
+                        <input asp-for="FullAddress" class="form-control" id="addressInput" />
+                        <span asp-validation-for="FullAddress" class="text-danger"></span>
+
+                        <div class="d-flex gap-2 mt-2">
+                            <button type="button" id="findOnMapBtn" class="btn btn-outline-secondary app-pill">
+                                <i class="bi bi-search me-1"></i> Find address
+                            </button>
+                            <span class="app-muted small align-self-center">
+                                Enter an address and click “Find address” to update coordinates.
+                            </span>
+                        </div>
+                    </div>
+
+                    <div id="create-map" class="border rounded mb-3" style="height: 320px;"></div>
+
+                    @if (Model.Photos != null && Model.Photos.Any())
+                    {
+                        <div class="mb-3">
+                            <div class="fw-semibold mb-2">Current photos</div>
+                            <div class="row g-2">
+                                @foreach (var photo in Model.Photos)
+                                {
+                                    <div class="col-4 col-md-3">
+                                        <div class="border rounded overflow-hidden" style="height: 110px; display:flex; align-items:center; justify-content:center;">
+                                            <img src="@photo.ImageUrl" alt="Apartment photo"
+                                                 class="img-fluid" style="max-height:100%; max-width:100%; object-fit:cover;" />
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                            <div class="form-text">
+                                If you upload new photos, all old photos will be replaced.
+                            </div>
+                        </div>
+                    }
+
+                    <div class="mb-3">
+                        <label class="form-label">New photos</label>
+                        <input type="file" name="photos" class="form-control" multiple />
+                        <div class="form-text">
+                            If you select new photos, all old photos will be replaced.
+                        </div>
+                    </div>
+
+                    <input type="hidden" asp-for="Latitude" id="Latitude" />
+                    <input type="hidden" asp-for="Longitude" id="Longitude" />
+                    <input type="hidden" asp-for="City" id="City" />
+                    <input type="hidden" id="IsAddressValid" name="IsAddressValid" value="true" />
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary app-pill">
+                            <i class="bi bi-check2-circle me-1"></i> Save
+                        </button>
+                        <a asp-action="Index" class="btn btn-outline-secondary app-pill">Cancel</a>
+                    </div>
+                </form>
             </div>
-
-
-
-            <input type="hidden" asp-for="Latitude" id="Latitude" />
-            <input type="hidden" asp-for="Longitude" id="Longitude" />
-            <input type="hidden" asp-for="City" id="City" />
-            <input type="hidden" id="IsAddressValid" name="IsAddressValid" value="true" />
-
-            <div class="form-group mt-2">
-                <input type="submit" value="Save" class="btn btn-primary" />
-                <a asp-action="Index" class="btn btn-secondary">Back to List</a>
-            </div>
-        </form>
+        </div>
     </div>
 </div>
 
@@ -150,7 +164,7 @@
             validFlag.value = "false";
 
             if (!query || query.length < 3) {
-                alert('Введіть коректну адресу (мінімум 3 символи).');
+                alert("Please enter a valid address (at least 3 characters).");
                 return;
             }
 
@@ -159,19 +173,19 @@
             try {
                 const response = await fetch(url, {
                     headers: {
-                        'Accept-Language': 'uk',
+                        'Accept-Language': 'en',
                         'User-Agent': 'ApartmentRentalApp/1.0'
                     }
                 });
 
                 if (!response.ok) {
-                    alert('Помилка запиту до сервісу геокодування.');
+                    alert("Geocoding request failed.");
                     return;
                 }
 
                 const results = await response.json();
                 if (!results || results.length === 0) {
-                    alert('Нічого не знайдено. Спробуйте уточнити адресу.');
+                    alert("No results found. Please refine the address.");
                     return;
                 }
 
@@ -206,7 +220,7 @@
                 validFlag.value = "true";
             } catch (err) {
                 console.error(err);
-                alert('Сталася помилка при пошуку адреси.');
+                alert("An error occurred while searching for the address.");
                 validFlag.value = "false";
             }
         }

@@ -4,89 +4,85 @@
     ViewData["Title"] = "Apartments";
 }
 
-<h1 class="h3 mb-3">Список квартир</h1>
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <div>
+        <h1 class="h3 mb-1">Apartments</h1>
+    </div>
 
-<form method="get" asp-action="Index" class="mb-3">
-    <div class="row g-2 align-items-end">
-        <div class="col-md-4">
-            <label for="city" class="form-label">Місто</label>
-            <select id="city" name="city" class="form-select"
-                    asp-items="ViewBag.Cities">
-                <option value="">Усі міста</option>
-            </select>
-        </div>
-        <div class="col-md-2">
-            <button type="submit" class="btn btn-primary w-100">Фільтрувати</button>
+    <div class="d-flex gap-2">
+        <a asp-action="Create" class="btn btn-primary app-pill">
+            <i class="bi bi-plus-circle me-1"></i> Add apartment
+        </a>
+        <a asp-action="Map" class="btn btn-outline-success app-pill">
+            <i class="bi bi-geo-alt me-1"></i> Map
+        </a>
+    </div>
+</div>
+
+<div class="card app-card mb-3">
+    <div class="card-body">
+        <form method="get" asp-action="Index" class="row g-2 align-items-end">
+            <div class="col-md-5">
+                <label for="city" class="form-label">City</label>
+                <select id="city" name="city" class="form-select" asp-items="ViewBag.Cities">
+                    <option value="">All cities</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <button type="submit" class="btn btn-primary w-100 app-pill">
+                    <i class="bi bi-funnel me-1"></i> Filter
+                </button>
+            </div>
+        </form>
+
+        @if (!string.IsNullOrEmpty(ViewBag.SelectedCity))
+        {
+            <div class="mt-2 app-muted">
+                Selected city: <strong>@ViewBag.SelectedCity</strong>
+            </div>
+        }
+    </div>
+</div>
+
+<div class="card app-card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table app-table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Title</th>
+                        <th class="d-none d-lg-table-cell">Description</th>
+                        <th>Price</th>
+                        <th>City</th>
+                        <th class="d-none d-md-table-cell">Address</th>
+                        <th class="text-end"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model)
+                    {
+                        <tr>
+                            <td class="fw-semibold">@item.Title</td>
+                            <td class="d-none d-lg-table-cell text-truncate" style="max-width: 320px;">
+                                @(string.IsNullOrWhiteSpace(item.Description) ? "—" : item.Description)
+                            </td>
+                            <td class="fw-semibold">@item.Price.ToString("N0") $/month</td>
+                            <td>@item.City</td>
+                            <td class="d-none d-md-table-cell text-truncate" style="max-width: 320px;">
+                                @item.FullAddress
+                            </td>
+                            <td class="text-end">
+                                <div class="btn-group">
+                                    <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-sm btn-outline-primary">Details</a>
+                                    <a asp-action="Landing" asp-route-id="@item.Id" class="btn btn-sm btn-outline-secondary">Landing</a>
+                                    <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-dark">Edit</a>
+                                    <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-outline-danger">Delete</a>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
         </div>
     </div>
-</form>
-
-@if (!string.IsNullOrEmpty(ViewBag.SelectedCity))
-{
-    <p><strong>Вибране місто:</strong> @ViewBag.SelectedCity</p>
-}
-
-<p class="mb-3">
-    <a asp-action="Create" class="btn btn-primary me-2">
-        <i class="bi bi-plus-circle"></i> Create New
-    </a>
-    <a asp-action="Map" class="btn btn-outline-success">
-        <i class="bi bi-geo-alt"></i> View on Map
-    </a>
-</p>
-
-<table class="table">
-    <thead>
-        <tr>
-            <th>
-                @Html.DisplayNameFor(model => model.Title)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Description)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Price)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.City)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.FullAddress)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Lessor)
-            </th>
-            <th></th>
-        </tr>
-    </thead>
-    <tbody>
-@foreach (var item in Model) {
-        <tr>
-            <td>
-                @Html.DisplayFor(modelItem => item.Title)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.Description)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.Price)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.City)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.FullAddress)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.Lessor.Id)
-            </td>
-            <td>
-                <a asp-action="Edit" asp-route-id="@item.Id">Edit</a> |
-                <a asp-action="Details" asp-route-id="@item.Id">Details</a> |
-                <a asp-action="Landing" asp-route-id="@item.Id">Landing</a> |
-                <a asp-action="Delete" asp-route-id="@item.Id">Delete</a>
-            </td>
-        </tr>
-}
-    </tbody>
-</table>
+</div>

@@ -24,7 +24,6 @@ namespace ApartmentRental.Models
             set => base.Email = value;
         }
 
-
         [Phone(ErrorMessage = "Invalid phone number.")]
         [Display(Name = "Phone Number")]
         public override string? PhoneNumber

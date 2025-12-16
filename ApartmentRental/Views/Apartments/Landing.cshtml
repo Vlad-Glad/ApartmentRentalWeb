@@ -2,10 +2,10 @@
 @using System.Globalization
 
 @{
-    ViewData["Title"] = $"{Model.Title} – оренда в {Model.City}";
+    ViewData["Title"] = $"{Model.Title} – rent in {Model.City}";
 
     var rawDescription = string.IsNullOrWhiteSpace(Model.Description)
-        ? $"Оренда квартири в {Model.City}. Ціна {Model.Price:N0} ₴ на місяць."
+        ? $"Apartment for rent in {Model.City}. Price {Model.Price:N0} $ per month."
         : Model.Description;
 
     var normalized = rawDescription.Replace("\r", " ")
@@ -20,61 +20,77 @@
     ViewData["MetaImage"] = Model.Photos.FirstOrDefault()?.ImageUrl;
 }
 
-<div class="container my-5">
-    <div class="row">
+<div class="container my-4">
+    <div class="row g-4">
         <div class="col-lg-8">
-            <section class="mb-4">
-                <h1 class="display-5 fw-bold">@Model.Title</h1>
-                <div class="h3 fw-bold text-primary">@Model.Price.ToString("N0") ₴ / місяць</div>
-            </section>
+            <div class="card app-card mb-4">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start gap-3">
+                        <div>
+                            <h1 class="h3 fw-bold mb-1">@Model.Title</h1>
+                            <div class="app-muted">@Model.City</div>
+                        </div>
+                        <div class="text-end">
+                            <div class="h4 fw-bold text-primary mb-0">@Model.Price.ToString("N0") $</div>
+                            <div class="app-muted">per month</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
             @if (Model.Photos != null && Model.Photos.Any())
             {
-                <section class="mb-4">
-                    <div class="row g-2">
-                        @foreach (var photo in Model.Photos)
-                        {
-                            <div class="col-6 col-md-4">
-                                <img src="@photo.ImageUrl" class="img-fluid rounded" alt="Apartment photo" />
-                            </div>
-                        }
+                <div class="card app-card mb-4">
+                    <div class="card-body">
+                        <div class="row g-2">
+                            @foreach (var photo in Model.Photos)
+                            {
+                                <div class="col-6 col-md-4">
+                                    <img src="@photo.ImageUrl" class="img-fluid rounded" alt="Apartment photo" />
+                                </div>
+                            }
+                        </div>
                     </div>
-                </section>
+                </div>
             }
 
-            <section id="description" class="mb-4">
-                <h2 class="h4">Опис</h2>
-                <p>
-                    @(string.IsNullOrWhiteSpace(Model.Description)
-                                        ? "Опис буде додано найближчим часом."
-                                        : Model.Description)
-                </p>
-            </section>
+            <div class="card app-card mb-4">
+                <div class="card-body">
+                    <h2 class="h5 mb-2">Description</h2>
+                    <p class="mb-0">
+                        @(string.IsNullOrWhiteSpace(Model.Description)
+                                                ? "Description will be added soon."
+                                                : Model.Description)
+                    </p>
+                </div>
+            </div>
 
-            <section id="location" class="mb-4">
-                <h2 class="h4">Локація</h2>
-                <p>
-                    Місто: <strong>@Model.City</strong><br />
-                    @if (!string.IsNullOrWhiteSpace(Model.FullAddress))
-                    {
-                        @:Адреса: <strong>@Model.FullAddress</strong><br />
-                    }
-                </p>
+            <div class="card app-card">
+                <div class="card-body">
+                    <h2 class="h5 mb-2">Location</h2>
+                    <div class="mb-3">
+                        City: <strong>@Model.City</strong><br />
+                        @if (!string.IsNullOrWhiteSpace(Model.FullAddress))
+                        {
+                            <span>Address: <strong>@Model.FullAddress</strong></span>
+                        }
+                    </div>
 
-                <div id="apartment-map" class="border rounded"
-                     style="height: 300px;"></div>
-            </section>
-
+                    <div id="apartment-map" class="border rounded" style="height: 320px;"></div>
+                </div>
+            </div>
         </div>
 
         <div class="col-lg-4">
             <div class="position-sticky" style="top: 80px;">
-                <div class="card shadow-sm">
+                <div class="card app-card">
                     <div class="card-body">
-                        <h2 class="h5 mb-3">Контакти</h2>
+                        <h2 class="h5 mb-3">Contacts</h2>
+
                         <p class="mb-1">
-                            <strong>@(Model.Lessor?.FirstName ?? "Орендодавець") @(Model.Lessor?.LastName)</strong>
+                            <strong>@(Model.Lessor?.FirstName ?? "Lessor") @(Model.Lessor?.LastName)</strong>
                         </p>
+
                         @if (!string.IsNullOrEmpty(Model.Lessor?.Email))
                         {
                             <p class="mb-1">
@@ -83,10 +99,16 @@
                         }
                         @if (!string.IsNullOrEmpty(Model.Lessor?.PhoneNumber))
                         {
-                            <p class="mb-3">
-                                Телефон: <a href="tel:@Model.Lessor.PhoneNumber">@Model.Lessor.PhoneNumber</a>
+                            <p class="mb-0">
+                                Phone: <a href="tel:@Model.Lessor.PhoneNumber">@Model.Lessor.PhoneNumber</a>
                             </p>
                         }
+
+                        <hr />
+
+                        <a asp-action="Index" class="btn btn-outline-secondary w-100 app-pill">
+                            <i class="bi bi-arrow-left me-1"></i> Back to list
+                        </a>
                     </div>
                 </div>
             </div>
@@ -112,7 +134,7 @@
         if (lat === null || lng === null) {
             const mapDiv = document.getElementById("apartment-map");
             if (mapDiv) {
-                mapDiv.innerHTML = "<div class='p-3 text-muted'>Координати ще не вказані.</div>";
+                mapDiv.innerHTML = "<div class='p-3 text-muted'>Coordinates are not set.</div>";
             }
             return;
         }

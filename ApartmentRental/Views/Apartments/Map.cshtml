@@ -1,20 +1,32 @@
 ﻿@{
-    ViewData["Title"] = "Квартири на мапі";
+    ViewData["Title"] = "Apartments on map";
 }
 
 <div class="container my-4">
-    <h1 class="h3 mb-3">Квартири на мапі</h1>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h1 class="h3 mb-1">Apartments on map</h1>
+            <div class="app-muted">Filter by city and explore listings.</div>
+        </div>
+        <a asp-action="Index" class="btn btn-outline-secondary app-pill">
+            <i class="bi bi-arrow-left me-1"></i> Back
+        </a>
+    </div>
 
-    <div class="row mb-3">
-        <div class="col-md-4">
-            <label for="cityFilter" class="form-label">Фільтр за містом</label>
+    <div class="card app-card mb-3">
+        <div class="card-body">
+            <label for="cityFilter" class="form-label">City filter</label>
             <select id="cityFilter" class="form-select">
-                <option value="">Усі міста</option>
+                <option value="">All cities</option>
             </select>
         </div>
     </div>
 
-    <div id="apartments-map" class="border rounded" style="height: 500px;"></div>
+    <div class="card app-card">
+        <div class="card-body p-0">
+            <div id="apartments-map" class="border rounded" style="height: 540px;"></div>
+        </div>
+    </div>
 </div>
 
 @section Scripts {
@@ -80,12 +92,16 @@
                     const lng = a.longitude;
                     const marker = L.marker([lat, lng]).addTo(map);
 
+                    const safeTitle = (a.title ?? 'Apartment').toString();
+                    const safeCity = (a.city ?? '').toString();
+                    const safePrice = a.price ?? '';
+
                     const popupHtml = `
                         <div>
-                            <strong>${a.title ?? 'Квартира'}</strong><br/>
-                            ${a.city ?? ''}<br/>
-                            Ціна: ${a.price} ₴/міс<br/>
-                            <a href="/Apartments/Landing/${a.id}">Детальніше</a>
+                            <strong>${safeTitle}</strong><br/>
+                            ${safeCity}<br/>
+                            Price: ${safePrice} $/month<br/>
+                            <a href="/Apartments/Landing/${a.id}">View</a>
                         </div>
                     `;
 

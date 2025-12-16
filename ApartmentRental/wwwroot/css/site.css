@@ -21,3 +21,52 @@ html {
 body {
   margin-bottom: 60px;
 }
+
+/* --- ApartmentRental minimal theme --- */
+.app-body {
+    background: #f6f7fb;
+}
+
+.app-header .navbar {
+    box-shadow: 0 2px 18px rgba(16, 24, 40, 0.06);
+}
+
+.card.app-card {
+    border: 0;
+    border-radius: 16px;
+    box-shadow: 0 10px 30px rgba(16, 24, 40, 0.08);
+}
+
+    .card.app-card .card-header {
+        background: transparent;
+        border-bottom: 1px solid rgba(0,0,0,0.06);
+    }
+
+.app-badge {
+    font-size: .85rem;
+    border-radius: 999px;
+}
+
+.app-muted {
+    color: #667085;
+}
+
+.table.app-table {
+    background: white;
+    border-radius: 14px;
+    overflow: hidden;
+}
+
+    .table.app-table thead th {
+        background: #f9fafb;
+        color: #344054;
+        border-bottom: 1px solid rgba(0,0,0,0.06);
+    }
+
+.btn.app-pill {
+    border-radius: 999px;
+}
+
+.ui-autocomplete {
+    z-index: 2000 !important;
+}

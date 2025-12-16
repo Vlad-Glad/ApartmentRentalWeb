@@ -1,93 +1,92 @@
 ﻿@model ApartmentRental.Models.Apartment
 
 @{
-    ViewData["Title"] = "Create";
+    ViewData["Title"] = "Create apartment";
 }
 
-<h1>Create</h1>
-
-<h4>Apartment</h4>
-<hr />
-<div class="row">
-    <div class="col-md-6 col-lg-5">
-        <form asp-action="Create" enctype="multipart/form-data">
-            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-
-            <div class="form-group mb-3">
-                <label asp-for="Title" class="control-label"></label>
-                <input asp-for="Title" class="form-control" />
-                <span asp-validation-for="Title" class="text-danger"></span>
-            </div>
-
-            <div class="form-group mb-3">
-                <label asp-for="Description" class="control-label"></label>
-                <input asp-for="Description" class="form-control" />
-                <span asp-validation-for="Description" class="text-danger"></span>
-            </div>
-
-            <div class="form-group mb-3">
-                <label asp-for="Price" class="control-label"></label>
-                <div class="input-group">
-                    <input asp-for="Price" class="form-control" />
-                    <span class="input-group-text">₴/міс</span>
+<div class="row justify-content-center">
+    <div class="col-lg-7">
+        <div class="card app-card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <div>
+                        <h1 class="h4 mb-1">Create apartment</h1>
+                        <div class="app-muted">Fill in the details and upload photos.</div>
+                    </div>
+                    <a asp-action="Index" class="btn btn-outline-secondary btn-sm app-pill">
+                        <i class="bi bi-arrow-left me-1"></i> Back
+                    </a>
                 </div>
-                <span asp-validation-for="Price" class="text-danger"></span>
+
+                <form asp-action="Create" enctype="multipart/form-data">
+                    <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+                    <div class="mb-3">
+                        <label asp-for="Title" class="form-label"></label>
+                        <input asp-for="Title" class="form-control" />
+                        <span asp-validation-for="Title" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Description" class="form-label"></label>
+                        <textarea asp-for="Description" class="form-control" rows="4"></textarea>
+                        <span asp-validation-for="Description" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Price" class="form-label"></label>
+                        <div class="input-group">
+                            <input asp-for="Price" class="form-control" />
+                            <span class="input-group-text">$/month</span>
+                        </div>
+                        <span asp-validation-for="Price" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-2">
+                        <label asp-for="FullAddress" class="form-label"></label>
+                        <div class="input-group">
+                            <input asp-for="FullAddress"
+                                   class="form-control"
+                                   id="addressInput"
+                                   placeholder="City, street, building number" />
+
+                            <button type="button" id="findOnMapBtn" class="btn btn-outline-secondary">
+                                <i class="bi bi-search me-1"></i> Find address
+                            </button>
+                        </div>
+                        <div class="form-text">
+                            Start typing, pick a suggestion — the map will update automatically.
+                        </div>
+                        <span asp-validation-for="FullAddress" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3 mt-2">
+                        <div id="create-map" class="border rounded" style="height: 320px;"></div>
+                    </div>
+
+                    <!-- hidden fields -->
+                    <input type="hidden" id="IsAddressValid" name="IsAddressValid" value="false" />
+                    <input type="hidden" asp-for="City" id="City" />
+                    <input type="hidden" asp-for="Latitude" id="Latitude" />
+                    <input type="hidden" asp-for="Longitude" id="Longitude" />
+
+                    <div class="mb-3">
+                        <label for="photos" class="form-label">Apartment photos</label>
+                        <input type="file" id="photos" name="photos" class="form-control" multiple />
+                        <div class="form-text">You can select multiple files.</div>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary app-pill">
+                            <i class="bi bi-check2-circle me-1"></i> Create
+                        </button>
+                        <a asp-action="Index" class="btn btn-outline-secondary app-pill">Cancel</a>
+                    </div>
+                </form>
             </div>
-
-            <div class="form-group mb-2">
-                <label asp-for="FullAddress" class="control-label"></label>
-                <div class="input-group">
-                    <input asp-for="FullAddress"
-                           class="form-control"
-                           id="addressInput"
-                           placeholder="Місто, вулиця, номер будинку" />
-
-                    <button type="button"
-                            id="findOnMapBtn"
-                            class="btn btn-outline-secondary">
-                        Пошук адреси
-                    </button>
-                </div>
-                <small class="form-text text-muted">
-                    Почніть вводити адресу, оберіть варіант із підказок — карта оновиться автоматично.
-                </small>
-                <span asp-validation-for="FullAddress" class="text-danger"></span>
-            </div>
-
-            <div class="mb-3 mt-2">
-                <div id="create-map" class="border rounded" style="height: 300px;"></div>
-            </div>
-
-            <!-- hidden-поля -->
-            <input type="hidden" id="IsAddressValid" name="IsAddressValid" value="false" />
-            <input type="hidden" asp-for="City" id="City" />
-            <input type="hidden" asp-for="Latitude" id="Latitude" />
-            <input type="hidden" asp-for="Longitude" id="Longitude" />
-
-            <div class="form-group mb-3">
-                <label for="photos" class="control-label">Фото квартири</label>
-                <input type="file" id="photos" name="photos" class="form-control" multiple />
-                <small class="form-text text-muted">Можна обрати кілька файлів.</small>
-            </div>
-
-            <div class="form-group mt-2">
-                <input type="submit" value="Create" class="btn btn-primary" />
-            </div>
-
-        </form>
+        </div>
     </div>
 </div>
-
-
-<div>
-    <a asp-action="Index">Back to List</a>
-</div>
-
-<style>
-    .ui-autocomplete {
-        z-index: 2000 !important;
-    }
-</style>
 
 @section Scripts {
     @{
@@ -135,9 +134,7 @@
                             });
                             response(items);
                         })
-                        .fail(function () {
-                            response([]);
-                        });
+                        .fail(function () { response([]); });
                 },
                 select: function (event, ui) {
                     const item = ui.item;
@@ -149,42 +146,41 @@
                     $valid.val("true");
 
                     centerMapOn(item.latitude, item.longitude);
-
                     return false;
                 }
             });
 
             document.getElementById("findOnMapBtn")
                 .addEventListener("click", async function () {
-                const query = $addressInput.val().trim();
-                $valid.val("false");
+                    const query = $addressInput.val().trim();
+                    $valid.val("false");
 
-                if (!query || query.length < 3) {
-                    alert("Введіть коректну адресу (мінімум 3 символи).");
-                    return;
-                }
-
-                try {
-                    const data = await $.getJSON("/api/addresses/search", { q: query });
-                    if (!data || data.length === 0) {
-                        alert("Нічого не знайдено. Спробуйте уточнити адресу.");
+                    if (!query || query.length < 3) {
+                        alert("Please enter a valid address (at least 3 characters).");
                         return;
                     }
 
-                    const first = {
-                        label: data[0].label,
-                        value: data[0].label,
-                        city: data[0].city,
-                        latitude: data[0].latitude,
-                        longitude: data[0].longitude
-                    };
+                    try {
+                        const data = await $.getJSON("/api/addresses/search", { q: query });
+                        if (!data || data.length === 0) {
+                            alert("No results found. Please refine the address.");
+                            return;
+                        }
 
-                    fillAddressFromSuggestion(first);
-                } catch (e) {
-                    console.error(e);
-                    alert("Сталася помилка при пошуку адреси.");
-                }
-            });
+                        const first = {
+                            label: data[0].label,
+                            value: data[0].label,
+                            city: data[0].city,
+                            latitude: data[0].latitude,
+                            longitude: data[0].longitude
+                        };
+
+                        fillAddressFromSuggestion(first);
+                    } catch (e) {
+                        console.error(e);
+                        alert("An error occurred while searching for the address.");
+                    }
+                });
 
             function fillAddressFromSuggestion(item) {
                 $addressInput.val(item.label);
@@ -209,6 +205,3 @@
         }
     </script>
 }
-
-
-

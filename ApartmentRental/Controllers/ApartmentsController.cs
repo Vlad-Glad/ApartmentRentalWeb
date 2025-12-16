@@ -47,7 +47,6 @@ namespace ApartmentRental.Controllers
                 apartmentsQuery = apartmentsQuery.Where(a => a.City == city);
             }
 
-            ViewBag.Cities = new SelectList(cities);
             ViewBag.SelectedCity = city;
             ViewBag.Cities = new SelectList(cities, city);
 
@@ -67,6 +66,7 @@ namespace ApartmentRental.Controllers
             var apartment = await _context.Apartments
                 .Include(a => a.Lessor)
                 .FirstOrDefaultAsync(m => m.Id == id);
+
             if (apartment == null)
             {
                 return NotFound();
@@ -91,9 +91,13 @@ namespace ApartmentRental.Controllers
             if (!IsAddressValid || apartment.Latitude == null || apartment.Longitude == null)
             {
                 ModelState.AddModelError("FullAddress",
-                    "Будь ласка, натисніть «Пошук адреси» і оберіть коректну адресу з підказки.");
+                    "Please click “Find address” and select a valid address from the suggestions.");
             }
 
+            if (apartment.Price <= 0)
+            {
+                ModelState.AddModelError(nameof(Apartment.Price), "Price must be greater than zero.");
+            }
 
             if (!ModelState.IsValid)
             {
@@ -170,10 +174,13 @@ namespace ApartmentRental.Controllers
             if (!IsAddressValid || apartment.Latitude == null || apartment.Longitude == null)
             {
                 ModelState.AddModelError("FullAddress",
-                    "Будь ласка, натисніть «Пошук адреси» і оберіть коректну адресу з підказки.");
+                    "Please click “Find address” and select a valid address from the suggestions.");
             }
 
-            var apartmentToUpdate = await _context.Apartments.FindAsync(id);
+            var apartmentToUpdate = await _context.Apartments
+                .Include(a => a.Photos)
+                .FirstOrDefaultAsync(a => a.Id == id);
+
             if (apartmentToUpdate == null)
             {
                 return NotFound();
@@ -183,6 +190,11 @@ namespace ApartmentRental.Controllers
             if (apartmentToUpdate.LessorId != currentUserId)
             {
                 return Forbid();
+            }
+
+            if (apartment.Price <= 0)
+            {
+                ModelState.AddModelError(nameof(Apartment.Price), "Price must be greater than zero.");
             }
 
             if (!ModelState.IsValid)
@@ -254,7 +266,9 @@ namespace ApartmentRental.Controllers
         {
             if (id == null) return NotFound();
 
-            var apartment = await _context.Apartments.FindAsync(id);
+            var apartment = await _context.Apartments
+                .Include(a => a.Lessor)
+                .FirstOrDefaultAsync(a => a.Id == id.Value);
 
             if (apartment == null) return NotFound();
 

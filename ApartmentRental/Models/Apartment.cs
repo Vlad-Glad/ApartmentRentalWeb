@@ -16,8 +16,8 @@ namespace ApartmentRental.Models
 
         public string? Description { get; set; }
 
-        [Range(0, uint.MaxValue, ErrorMessage = "Price has to be posititve")]
-        [Required(ErrorMessage = "Price is required")]
+        [Required(ErrorMessage = "Price is required.")]
+        [Range(typeof(decimal), "0.01", "1000000000", ErrorMessage = "Price must be greater than zero.")]
         [Column(TypeName = "decimal(18, 2)")]
         public decimal Price { get; set; }
 
