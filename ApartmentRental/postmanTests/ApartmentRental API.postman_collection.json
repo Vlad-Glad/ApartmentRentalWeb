@@ -1,12 +1,56 @@
 {
 	"info": {
 		"_postman_id": "1962f970-bf94-4249-b25d-9113db8c6b80",
-		"name": "ApartmentRental API Copy",
+		"name": "ApartmentRental API",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "49896206",
 		"_collection_link": "https://vlad-v-gladkiy-7317489.postman.co/workspace/%D0%92%D0%BB%D0%B0%D0%B4%D0%B8%D1%81%D0%BB%D0%B0%D0%B2-%D0%93%D0%BB%D0%B0%D0%B4%D0%BA%D0%B8%D0%B9's-Workspace~a8df6092-1452-4879-8353-71ca0322887d/collection/49896206-1962f970-bf94-4249-b25d-9113db8c6b80?action=share&source=collection_link&creator=49896206"
 	},
 	"item": [
+		{
+			"name": "Login",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Login success (200)\", function () {\r",
+							"  pm.response.to.have.status(200);\r",
+							"});\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"email\": \"{{email}}\",\r\n  \"password\": \"{{password}}\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/test-auth/login",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"test-auth",
+						"login"
+					]
+				}
+			},
+			"response": []
+		},
 		{
 			"name": "GET all",
 			"event": [
@@ -61,16 +105,26 @@
 					"listen": "test",
 					"script": {
 						"exec": [
-							"pm.test(\"Status is 200 or 201\", function () {\r",
-							"    pm.expect(pm.response.code).to.be.oneOf([200, 201]);\r",
+							"pm.test(\"Status is 201 Created\", function () {\r",
+							"    pm.response.to.have.status(201);\r",
 							"});\r",
 							"\r",
-							"pm.test(\"Response has id\", function () {\r",
+							"pm.test(\"Response has numeric id > 0 and save it\", function () {\r",
 							"    const json = pm.response.json();\r",
+							"\r",
+							"    pm.expect(json).to.be.an(\"object\");\r",
 							"    pm.expect(json).to.have.property(\"id\");\r",
-							"    \r",
+							"\r",
+							"    pm.expect(json.id).to.be.a(\"number\");\r",
+							"    pm.expect(json.id).to.be.above(0);\r",
+							"\r",
 							"    pm.environment.set(\"apartmentId\", json.id);\r",
 							"});\r",
+							"\r",
+							"pm.test(\"Location header exists (CreatedAtAction)\", function () {\r",
+							"    pm.expect(pm.response.headers.has(\"Location\")).to.be.true;\r",
+							"});\r",
+							"\r",
 							""
 						],
 						"type": "text/javascript",
@@ -84,7 +138,7 @@
 				"header": [],
 				"body": {
 					"mode": "raw",
-					"raw": "{\r\n  \"title\": \"QA test apartment\",\r\n  \"description\": \"Created from Postman\",\r\n  \"price\": 12345,\r\n  \"city\": \"Kyiv\",\r\n  \"fullAddress\": \"Kyiv, Khreshchatyk 1\",\r\n  \"latitude\": 50.4474,\r\n  \"longitude\": 30.5223,\r\n  \"lessorId\": \"\"\r\n}",
+					"raw": "{\r\n  \"title\": \"QA test apartment\",\r\n  \"description\": \"Created from Postman Runner\",\r\n  \"price\": 12345,\r\n  \"city\": \"Kyiv\",\r\n  \"fullAddress\": \"Kyiv, test address\",\r\n  \"latitude\": 50.4501,\r\n  \"longitude\": 30.5234\r\n}\r\n",
 					"options": {
 						"raw": {
 							"language": "json"
@@ -119,6 +173,7 @@
 							"    const json = pm.response.json();\r",
 							"    pm.expect(json).to.have.property(\"id\", parseInt(pm.environment.get(\"apartmentId\")));\r",
 							"    pm.expect(json).to.have.property(\"title\");\r",
+							"    \r",
 							"});\r",
 							""
 						],
@@ -154,7 +209,15 @@
 						"exec": [
 							"pm.test(\"Status is 200 or 204\", function () {\r",
 							"    pm.expect(pm.response.code).to.be.oneOf([200, 204]);\r",
-							"});"
+							"});\r",
+							"\r",
+							"pm.environment.set(\"expectedTitle\", \"QA test apartment (updated)\");\r",
+							"pm.environment.set(\"expectedDescription\", \"Updated from Postman\");\r",
+							"pm.environment.set(\"expectedPrice\", \"99999\");\r",
+							"pm.environment.set(\"expectedCity\", \"Kyiv\");\r",
+							"pm.environment.set(\"expectedFullAddress\", \"Kyiv, Khreshchatyk 1\");\r",
+							"pm.environment.set(\"expectedLatitude\", \"50.4474\");\r",
+							"pm.environment.set(\"expectedLongitude\", \"30.5223\");"
 						],
 						"type": "text/javascript",
 						"packages": {},
@@ -224,6 +287,16 @@
 			"response": []
 		}
 	],
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "",
+				"type": "string"
+			}
+		]
+	},
 	"event": [
 		{
 			"listen": "prerequest",
@@ -232,10 +305,7 @@
 				"packages": {},
 				"requests": {},
 				"exec": [
-					"pm.request.headers.add({\r",
-					"    key: \"Cookie\",\r",
-					"    value: \".AspNetCore.Identity.Application=CfDJ8MHJQ-4wDD9Bh4P8xfFidVrzMenAn8Kimc8GS5RapY9YXFKRZcCm-6Ltt9Qi1U5bCFQfbMfBd9j7eHDG2lYtV_Y0cdDTeCxb5TBDmJd3-aUfhBL8t1OVtlYnkD_4Xokir9a1DUIwy6P8SYxrp5nqlkk4pVz4DQy94GGWn_DGdN9-da-2oWzKncid3v1Ez-kEnPE5_OmSF7nS0ywPEuqs_B6o-fgvAjsTuYyV_Tb_LS0sdc0Fk8EQqAH4bIYiRGcL6JznzNytDh-bYim014rFTTun28M3S_cCcldAbniWniFoSwGCVNZ2L_2Goe8N4ofYSYmWWgqmub2HnckZ6DkMFzfKOMuvsaVCmNE9k7mXNsrTm-8Hw7-HiuLsWJCdoiuXznv4YOiXZeiHTrz9jkCPCJBKahLZ1DvZYy0w9Sw5aDhzUNVSjRnPPDHFN7y8IWTnlbiFPWu0tWE4nkKwxjEy-A6f4l5KPmwyuTcFEQdvFHqKlMHu-pOgf08pcJ-Ta_knddTSVroUZL1DpKfRh7Ett5-1m_ueqvqvKU9LU6b1CV9ejMkxh-aSR83WdnO87HJukhxiLs_k0rFQWm-nlU1HW9xk_yYH0_61_-fF1jpLTGKSoAHD9Xk-TzkmDGLk4U_33rhaPJzHknhOodq-7xN89A-GT98tMRZcTKaUvP_5CDLvRLFlF8lHG3vvGwhLWreMUass17Qj8HrHDqRLE_Fs4zk\"\r",
-					"});"
+					""
 				]
 			}
 		},

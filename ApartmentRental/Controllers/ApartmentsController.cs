@@ -110,7 +110,20 @@ namespace ApartmentRental.Controllers
                 return Challenge();
             }
 
+            var normalizedAddress = apartment.FullAddress.Trim();
+
+            var duplicateExists = await _context.Apartments.AnyAsync(a =>
+                a.LessorId == userId &&
+                a.FullAddress == normalizedAddress);
+
+            if (duplicateExists)
+            {
+                ModelState.AddModelError(nameof(Apartment.FullAddress),
+                    "An apartment with the same address already exists.");
+            }
+
             apartment.LessorId = userId;
+            apartment.FullAddress = normalizedAddress;
 
             _context.Add(apartment);
             await _context.SaveChangesAsync();
@@ -192,6 +205,21 @@ namespace ApartmentRental.Controllers
                 return Forbid();
             }
 
+            var normalizedAddress = apartment.FullAddress.Trim();
+
+            var duplicateExists = await _context.Apartments.AnyAsync(a =>
+                a.Id != apartment.Id &&
+                a.LessorId == currentUserId &&
+                a.FullAddress == normalizedAddress);
+
+            if (duplicateExists)
+            {
+                ModelState.AddModelError(nameof(Apartment.FullAddress),
+                    "An apartment with the same address already exists.");
+            }
+
+            apartment.FullAddress = normalizedAddress;
+
             if (apartment.Price <= 0)
             {
                 ModelState.AddModelError(nameof(Apartment.Price), "Price must be greater than zero.");
@@ -215,7 +243,6 @@ namespace ApartmentRental.Controllers
 
                 if (photos != null && photos.Count > 0)
                 {
-
                     if (apartmentToUpdate.Photos != null && apartmentToUpdate.Photos.Any())
                     {
                         foreach (var oldPhoto in apartmentToUpdate.Photos)

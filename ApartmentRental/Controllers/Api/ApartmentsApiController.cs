@@ -108,6 +108,8 @@ namespace ApartmentRental.Controllers.Api
         [HttpPost]
         public async Task<IActionResult> CreateApartment([FromBody] ApartmentCreateDto dto)
         {
+            if (dto is null) return BadRequest(new { message = "Request body is required." });
+
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
@@ -116,8 +118,22 @@ namespace ApartmentRental.Controllers.Api
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (userId is null) return Unauthorized();
 
+            dto.FullAddress = dto.FullAddress.Trim();
+
+            var duplicateExists = await _context.Apartments.AnyAsync(a =>
+                a.LessorId == userId &&
+                a.FullAddress == dto.FullAddress);
+
+            if (duplicateExists)
+            {
+                return Conflict(new { message = "An apartment with the same address already exists." });
+            }
+
             if (string.IsNullOrWhiteSpace(dto.City) || dto.Latitude == null || dto.Longitude == null)
             {
+                if (string.IsNullOrWhiteSpace(dto.FullAddress))
+                    return BadRequest(new { message = "FullAddress is required when City/Latitude/Longitude are not provided." });
+
                 var suggestions = await _geocodingService.SearchAsync(dto.FullAddress, limit: 1);
 
                 var first = suggestions.FirstOrDefault();
@@ -168,6 +184,26 @@ namespace ApartmentRental.Controllers.Api
             if (apartment == null)
             {
                 return NotFound();
+            }
+
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (userId is null) return Unauthorized();
+
+            if (dto.FullAddress != null)
+            {
+                var newAddress = dto.FullAddress.Trim();
+
+                var duplicateExists = await _context.Apartments.AnyAsync(a =>
+                    a.Id != id &&
+                    a.LessorId == userId &&
+                    a.FullAddress == newAddress);
+
+                if (duplicateExists)
+                {
+                    return Conflict(new { message = "An apartment with the same address already exists." });
+                }
+
+                apartment.FullAddress = newAddress;
             }
 
             if (dto.Title != null) apartment.Title = dto.Title;
