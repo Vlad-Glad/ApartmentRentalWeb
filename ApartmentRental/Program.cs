@@ -3,7 +3,7 @@ using ApartmentRental.Models;
 using ApartmentRental.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-
+using ApartmentRental.Services.ExchangeRates;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -33,6 +33,11 @@ builder.Services.AddAuthentication()
 
 builder.Services.AddHttpClient<IGeocodingService, NominatimGeocodingService>();
 
+// Typed HttpClient for PrivatBank service
+builder.Services.AddHttpClient<IExchangeRateService, PrivatBankExchangeRateService>(client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(5);
+});
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();

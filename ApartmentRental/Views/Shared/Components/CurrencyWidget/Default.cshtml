@@ -1,0 +1,31 @@
+﻿@model ApartmentRental.Models.PrivatBank.CurrencyWidgetViewModel
+
+<div class="card mt-3">
+    <div class="card-body">
+        <h6 class="card-title mb-2">Prices by PrivatBank rate</h6>
+
+        <div class="mb-1">
+            <strong>USD:</strong> $@Model.PriceUsd
+        </div>
+
+        @if (Model.Warning is not null)
+        {
+            <div class="text-warning">@Model.Warning</div>
+        }
+        else
+        {
+            <div class="mb-1">
+                <strong>UAH:</strong> ₴@Model.PriceUah
+            </div>
+            <div class="mb-1">
+                <strong>EUR:</strong> €@Model.PriceEur
+            </div>
+
+            <div class="text-muted small mt-2">
+                USD/UAH: @Model.UsdToUah | EUR/UAH: @Model.EurToUah
+                <br />
+                Updated: @Model.UpdatedAtUtc
+            </div>
+        }
+    </div>
+</div>

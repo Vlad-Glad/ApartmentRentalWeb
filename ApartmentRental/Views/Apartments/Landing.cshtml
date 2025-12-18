@@ -109,6 +109,8 @@
                         <a asp-action="Index" class="btn btn-outline-secondary w-100 app-pill">
                             <i class="bi bi-arrow-left me-1"></i> Back to list
                         </a>
+
+                        @await Component.InvokeAsync("CurrencyWidget", new { priceUsd = Model.Price })
                     </div>
                 </div>
             </div>
