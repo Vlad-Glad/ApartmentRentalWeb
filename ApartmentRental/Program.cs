@@ -1,9 +1,11 @@
 using ApartmentRental.Data;
 using ApartmentRental.Models;
 using ApartmentRental.Services;
+using ApartmentRental.Services.ExchangeRates;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using ApartmentRental.Services.ExchangeRates;
+using System.Security.Claims;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -22,6 +24,14 @@ builder.Services.AddAuthentication()
 
         options.Scope.Add("profile");
         options.Scope.Add("email");
+
+        // Optional: store tokens (only if you plan to use Google APIs later)
+        // options.SaveTokens = true;
+
+        // Map extra profile fields
+        options.ClaimActions.MapJsonKey(ClaimTypes.GivenName, "given_name");
+        options.ClaimActions.MapJsonKey(ClaimTypes.Surname, "family_name");
+        options.ClaimActions.MapJsonKey("urn:google:picture", "picture");
 
         options.Events.OnRemoteFailure = context =>
         {
