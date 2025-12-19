@@ -56,6 +56,12 @@ public sealed class ApartmentSearchService : IApartmentSearchService
         options.SearchFields.Add("title");
         options.SearchFields.Add("lessorEmail");
 
+        // ensure fields are returned
+        options.Select.Add("id");
+        options.Select.Add("apartmentId");
+        options.Select.Add("title");
+        options.Select.Add("lessorEmail");
+
         var results = await _queryClient.SearchAsync<ApartmentSearchDocument>(query, options, ct);
 
         var list = new List<ApartmentSearchDocument>();
