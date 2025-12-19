@@ -1,5 +1,6 @@
 using ApartmentRental.Data;
 using ApartmentRental.Models;
+using ApartmentRental.Search;
 using ApartmentRental.Services;
 using ApartmentRental.Services.ExchangeRates;
 using Microsoft.AspNetCore.Authentication;
@@ -54,6 +55,10 @@ builder.Services.AddControllersWithViews();
 builder.Services.AddRazorPages();
 
 builder.Services.AddScoped<IBlobService, BlobService>();
+
+builder.Services.Configure<AzureSearchOptions>(builder.Configuration.GetSection("AzureSearch"));
+builder.Services.AddSingleton<IApartmentSearchService, ApartmentSearchService>();
+
 
 var app = builder.Build();
 

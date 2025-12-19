@@ -1,5 +1,6 @@
 ﻿using ApartmentRental.Data;
 using ApartmentRental.Models;
+using ApartmentRental.Search;
 using ApartmentRental.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -20,12 +21,21 @@ namespace ApartmentRental.Controllers
         private readonly ApplicationDbContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IBlobService _blobService;
+        private readonly IApartmentSearchService _search;
+        private readonly ILogger<ApartmentsController> _logger;
 
-        public ApartmentsController(ApplicationDbContext context, UserManager<ApplicationUser> userManager, IBlobService blobService )
+        public ApartmentsController(
+            ApplicationDbContext context,
+            UserManager<ApplicationUser> userManager,
+            IBlobService blobService,
+            IApartmentSearchService search,
+            ILogger<ApartmentsController> logger)
         {
             _context = context;
             _userManager = userManager;
             _blobService = blobService;
+            _search = search;
+            _logger = logger;
         }
 
         [AllowAnonymous]
@@ -120,6 +130,7 @@ namespace ApartmentRental.Controllers
             {
                 ModelState.AddModelError(nameof(Apartment.FullAddress),
                     "An apartment with the same address already exists.");
+                return View(apartment);
             }
 
             apartment.LessorId = userId;
@@ -127,6 +138,16 @@ namespace ApartmentRental.Controllers
 
             _context.Add(apartment);
             await _context.SaveChangesAsync();
+
+            try
+            {
+                await IndexApartmentAsync(apartment);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Azure Search indexing failed for apartment {ApartmentId}", apartment.Id);
+            }
+
 
             if (photos != null && photos.Count > 0)
             {
@@ -216,6 +237,7 @@ namespace ApartmentRental.Controllers
             {
                 ModelState.AddModelError(nameof(Apartment.FullAddress),
                     "An apartment with the same address already exists.");
+                return View(apartment);
             }
 
             apartment.FullAddress = normalizedAddress;
@@ -272,6 +294,16 @@ namespace ApartmentRental.Controllers
                 }
 
                 await _context.SaveChangesAsync();
+
+                try
+                {
+                    await IndexApartmentAsync(apartmentToUpdate);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Azure Search indexing failed for apartment {ApartmentId}", apartmentToUpdate.Id);
+                }
+
             }
             catch (DbUpdateConcurrencyException)
             {
@@ -338,6 +370,16 @@ namespace ApartmentRental.Controllers
 
             _context.Apartments.Remove(apartment);
             await _context.SaveChangesAsync();
+
+            try
+            {
+                await _search.DeleteAsync($"apt-{id}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Azure Search delete failed for apartment {ApartmentId}", id);
+            }
+
             return RedirectToAction(nameof(Index));
         }
 
@@ -361,8 +403,73 @@ namespace ApartmentRental.Controllers
 
             return View(apartment);
         }
+        private async Task IndexApartmentAsync(Apartment apartment, CancellationToken ct = default)
+        {
+            string? lessorEmail = apartment.Lessor?.Email;
 
-        
+            if (string.IsNullOrWhiteSpace(lessorEmail) && !string.IsNullOrWhiteSpace(apartment.LessorId))
+            {
+                var lessor = await _userManager.FindByIdAsync(apartment.LessorId);
+                lessorEmail = lessor?.Email;
+            }
+
+            var doc = new ApartmentSearchDocument
+            {
+                Id = $"apt-{apartment.Id}",
+                ApartmentId = apartment.Id,
+                Title = apartment.Title ?? "",
+                LessorEmail = lessorEmail ?? ""
+            };
+
+            await _search.IndexAsync(doc, ct);
+        }
+
+        [AllowAnonymous]
+        public async Task<IActionResult> Search(string q, CancellationToken ct)
+        {
+            ViewBag.Query = q;
+
+            if (string.IsNullOrWhiteSpace(q))
+                return View(new List<Apartment>());
+
+            var hits = await _search.SearchAsync(q, ct);
+
+            var ids = hits.Select(x => x.ApartmentId).Distinct().ToList();
+            if (ids.Count == 0)
+                return View(new List<Apartment>());
+
+            var apartments = await _context.Apartments
+                .Include(a => a.Lessor)
+                .Include(a => a.Photos)
+                .Where(a => ids.Contains(a.Id))
+                .ToListAsync(ct);
+
+            apartments = apartments.OrderBy(a => ids.IndexOf(a.Id)).ToList();
+
+            ViewBag.Query = q;
+            return View(apartments);
+        }
+
+        [Authorize]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Reindex(CancellationToken ct)
+        {
+            if (!HttpContext.RequestServices.GetRequiredService<IWebHostEnvironment>().IsDevelopment())
+                return NotFound();
+
+            var apartments = await _context.Apartments
+                .Include(a => a.Lessor)
+                .ToListAsync(ct);
+
+            foreach (var a in apartments)
+            {
+                await IndexApartmentAsync(a, ct);
+            }
+
+            return Ok(new { message = "Reindex done", count = apartments.Count });
+        }
+
         public IActionResult Map()
         {
             return View();

@@ -59,6 +59,15 @@
                 <a class="navbar-brand fw-bold" asp-area="" asp-controller="Apartments" asp-action="Index">
                     <i class="bi bi-buildings"></i> ApartmentRental
                 </a>
+                <form class="d-flex" asp-controller="Apartments" asp-action="Search" method="get">
+                    <input class="form-control me-2"
+                           type="search"
+                           name="q"
+                           value="@(Context.Request.Query["q"])"
+                           placeholder="Search by title or lessor email..."
+                           aria-label="Search" />
+                    <button class="btn btn-outline-primary" type="submit">Search</button>
+                </form>
 
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav"
                         aria-controls="mainNav" aria-expanded="false" aria-label="Toggle navigation">
