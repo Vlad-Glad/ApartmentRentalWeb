@@ -1,8 +1,10 @@
 ﻿using ApartmentRental.Data;
 using ApartmentRental.Models;
 using ApartmentRental.Models.DTO;
+using ApartmentRental.Search;
 using ApartmentRental.Services;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
@@ -16,11 +18,22 @@ namespace ApartmentRental.Controllers.Api
     {
         private readonly ApplicationDbContext _context;
         private readonly IGeocodingService _geocodingService;
+        private readonly IApartmentSearchService _search;
+        private readonly UserManager<ApplicationUser> _userManager;
+        private readonly ILogger<ApartmentsController> _logger;
 
-        public ApartmentsController(ApplicationDbContext context, IGeocodingService geocodingService)
+        public ApartmentsController(
+            ApplicationDbContext context,
+            IGeocodingService geocodingService,
+            IApartmentSearchService search,
+            UserManager<ApplicationUser> userManager,
+            ILogger<ApartmentsController> logger)
         {
             _context = context;
             _geocodingService = geocodingService;
+            _search = search;
+            _userManager = userManager;
+            _logger = logger;
         }
 
         [HttpGet]
@@ -63,16 +76,14 @@ namespace ApartmentRental.Controllers.Api
                 nextLink = $"{baseUrl}?skip={nextSkip}&limit={limit}";
             }
 
-            var result = new PagedResultDto<ApartmentDto>
+            return Ok(new PagedResultDto<ApartmentDto>
             {
                 Items = items,
                 TotalCount = totalCount,
                 Skip = skip,
                 Limit = limit,
                 NextLink = nextLink
-            };
-
-            return Ok(result);
+            });
         }
 
         [HttpGet("{id:int}")]
@@ -97,23 +108,15 @@ namespace ApartmentRental.Controllers.Api
                 })
                 .FirstOrDefaultAsync();
 
-            if (apartment == null)
-            {
-                return NotFound();
-            }
-
+            if (apartment == null) return NotFound();
             return Ok(apartment);
         }
 
         [HttpPost]
-        public async Task<IActionResult> CreateApartment([FromBody] ApartmentCreateDto dto)
+        public async Task<IActionResult> CreateApartment([FromBody] ApartmentCreateDto dto, CancellationToken ct)
         {
             if (dto is null) return BadRequest(new { message = "Request body is required." });
-
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
+            if (!ModelState.IsValid) return BadRequest(ModelState);
 
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (userId is null) return Unauthorized();
@@ -122,12 +125,10 @@ namespace ApartmentRental.Controllers.Api
 
             var duplicateExists = await _context.Apartments.AnyAsync(a =>
                 a.LessorId == userId &&
-                a.FullAddress == dto.FullAddress);
+                a.FullAddress == dto.FullAddress, ct);
 
             if (duplicateExists)
-            {
                 return Conflict(new { message = "An apartment with the same address already exists." });
-            }
 
             if (string.IsNullOrWhiteSpace(dto.City) || dto.Latitude == null || dto.Longitude == null)
             {
@@ -141,18 +142,15 @@ namespace ApartmentRental.Controllers.Api
                 {
                     return BadRequest(new
                     {
-                        message = "Не вдалося знайти адресу через геокодер. " +
-                                  "Уточніть FullAddress або вкажіть City/Latitude/Longitude вручну."
+                        message = "Failed to resolve address using geocoder. уточніть FullAddress або вкажіть City/Latitude/Longitude вручну."
                     });
                 }
 
                 dto.City = first.City;
                 dto.Latitude = first.Latitude;
                 dto.Longitude = first.Longitude;
-
                 dto.FullAddress = first.Label;
             }
-
 
             var apartment = new Apartment
             {
@@ -167,27 +165,27 @@ namespace ApartmentRental.Controllers.Api
             };
 
             _context.Apartments.Add(apartment);
-            await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync(ct);
+
+            // Index in Azure Search (best-effort)
+            await TryIndexAsync(apartment, ct);
 
             return CreatedAtAction(nameof(GetApartment), new { id = apartment.Id }, new { apartment.Id });
         }
 
         [HttpPut("{id:int}")]
-        public async Task<IActionResult> UpdateApartment(int id, [FromBody] ApartmentUpdateDto dto)
+        public async Task<IActionResult> UpdateApartment(int id, [FromBody] ApartmentUpdateDto dto, CancellationToken ct)
         {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
+            if (!ModelState.IsValid) return BadRequest(ModelState);
 
-            var apartment = await _context.Apartments.FindAsync(id);
-            if (apartment == null)
-            {
-                return NotFound();
-            }
+            var apartment = await _context.Apartments.FindAsync(new object[] { id }, ct);
+            if (apartment == null) return NotFound();
 
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (userId is null) return Unauthorized();
+
+            // (Optional but recommended) authorize ownership
+            if (apartment.LessorId != userId) return Forbid();
 
             if (dto.FullAddress != null)
             {
@@ -196,12 +194,10 @@ namespace ApartmentRental.Controllers.Api
                 var duplicateExists = await _context.Apartments.AnyAsync(a =>
                     a.Id != id &&
                     a.LessorId == userId &&
-                    a.FullAddress == newAddress);
+                    a.FullAddress == newAddress, ct);
 
                 if (duplicateExists)
-                {
                     return Conflict(new { message = "An apartment with the same address already exists." });
-                }
 
                 apartment.FullAddress = newAddress;
             }
@@ -210,28 +206,71 @@ namespace ApartmentRental.Controllers.Api
             if (dto.Description != null) apartment.Description = dto.Description;
             if (dto.Price != null) apartment.Price = dto.Price.Value;
             if (dto.City != null) apartment.City = dto.City;
-            if (dto.FullAddress != null) apartment.FullAddress = dto.FullAddress;
             if (dto.Latitude != null) apartment.Latitude = dto.Latitude;
             if (dto.Longitude != null) apartment.Longitude = dto.Longitude;
 
-            await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync(ct);
+
+            // Re-index updated doc
+            await TryIndexAsync(apartment, ct);
 
             return NoContent();
         }
 
         [HttpDelete("{id:int}")]
-        public async Task<IActionResult> DeleteApartment(int id)
+        public async Task<IActionResult> DeleteApartment(int id, CancellationToken ct)
         {
-            var apartment = await _context.Apartments.FindAsync(id);
-            if (apartment == null)
-            {
-                return NotFound();
-            }
+            var apartment = await _context.Apartments.FindAsync(new object[] { id }, ct);
+            if (apartment == null) return NotFound();
+
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (userId is null) return Unauthorized();
+
+            // (Optional but recommended) authorize ownership
+            if (apartment.LessorId != userId) return Forbid();
 
             _context.Apartments.Remove(apartment);
-            await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync(ct);
+
+            // Remove from Azure Search
+            await TryDeleteFromIndexAsync(id, ct);
 
             return NoContent();
+        }
+
+        private async Task TryIndexAsync(Apartment apartment, CancellationToken ct)
+        {
+            try
+            {
+                var lessor = await _userManager.FindByIdAsync(apartment.LessorId);
+                var lessorEmail = lessor?.Email ?? "";
+
+                var doc = new ApartmentSearchDocument
+                {
+                    Id = $"apt-{apartment.Id}",
+                    ApartmentId = apartment.Id,
+                    Title = apartment.Title ?? "",
+                    LessorEmail = lessorEmail
+                };
+
+                await _search.IndexAsync(doc, ct);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Azure Search indexing failed for apartment {ApartmentId}", apartment.Id);
+            }
+        }
+
+        private async Task TryDeleteFromIndexAsync(int apartmentId, CancellationToken ct)
+        {
+            try
+            {
+                await _search.DeleteAsync($"apt-{apartmentId}", ct);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Azure Search delete failed for apartment {ApartmentId}", apartmentId);
+            }
         }
     }
 }

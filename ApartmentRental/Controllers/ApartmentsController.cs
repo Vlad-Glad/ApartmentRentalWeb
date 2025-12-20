@@ -7,14 +7,9 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace ApartmentRental.Controllers
 {
-
     [Authorize]
     public class ApartmentsController : Controller
     {
@@ -47,7 +42,7 @@ namespace ApartmentRental.Controllers
 
             var cities = await _context.Apartments
                 .Where(a => a.City != null)
-                .Select(a => a.City)
+                .Select(a => a.City!)
                 .Distinct()
                 .OrderBy(c => c)
                 .ToListAsync();
@@ -60,35 +55,24 @@ namespace ApartmentRental.Controllers
             ViewBag.SelectedCity = city;
             ViewBag.Cities = new SelectList(cities, city);
 
-
             var apartments = await apartmentsQuery.ToListAsync();
             return View(apartments);
         }
 
-
         public async Task<IActionResult> Details(int? id)
         {
-            if (id == null)
-            {
-                return NotFound();
-            }
+            if (id == null) return NotFound();
 
             var apartment = await _context.Apartments
                 .Include(a => a.Lessor)
                 .FirstOrDefaultAsync(m => m.Id == id);
 
-            if (apartment == null)
-            {
-                return NotFound();
-            }
+            if (apartment == null) return NotFound();
 
             return View(apartment);
         }
 
-        public IActionResult Create()
-        {
-            return View();
-        }
+        public IActionResult Create() => View();
 
         [HttpPost]
         [ValidateAntiForgeryToken]
@@ -115,10 +99,7 @@ namespace ApartmentRental.Controllers
             }
 
             var userId = _userManager.GetUserId(User);
-            if (userId == null)
-            {
-                return Challenge();
-            }
+            if (userId == null) return Challenge();
 
             var normalizedAddress = apartment.FullAddress.Trim();
 
@@ -141,15 +122,14 @@ namespace ApartmentRental.Controllers
 
             try
             {
-                await IndexApartmentAsync(apartment);
+                await IndexApartmentAsync(apartment, HttpContext.RequestAborted);
             }
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "Azure Search indexing failed for apartment {ApartmentId}", apartment.Id);
             }
 
-
-            if (photos != null && photos.Count > 0)
+            if (photos is { Count: > 0 })
             {
                 foreach (var file in photos)
                 {
@@ -158,18 +138,17 @@ namespace ApartmentRental.Controllers
                     using var stream = file.OpenReadStream();
                     var url = await _blobService.UploadAsync(stream, file.FileName, file.ContentType);
 
-                    var photo = new Photo
+                    _context.Photos.Add(new Photo
                     {
                         ApartmentId = apartment.Id,
                         ImageUrl = url
-                    };
-
-                    _context.Photos.Add(photo);
+                    });
                 }
+
                 await _context.SaveChangesAsync();
             }
 
-                return RedirectToAction(nameof(Index));
+            return RedirectToAction(nameof(Index));
         }
 
         public async Task<IActionResult> Edit(int? id)
@@ -183,11 +162,7 @@ namespace ApartmentRental.Controllers
             if (apartment == null) return NotFound();
 
             var currentUserId = _userManager.GetUserId(User);
-
-            if (apartment.LessorId != currentUserId)
-            {
-                return Forbid();
-            }
+            if (apartment.LessorId != currentUserId) return Forbid();
 
             return View(apartment);
         }
@@ -196,10 +171,7 @@ namespace ApartmentRental.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(int id, Apartment apartment, List<IFormFile> photos, bool IsAddressValid)
         {
-            if (id != apartment.Id)
-            {
-                return NotFound();
-            }
+            if (id != apartment.Id) return NotFound();
 
             ModelState.Remove("LessorId");
             ModelState.Remove("Lessor");
@@ -215,16 +187,10 @@ namespace ApartmentRental.Controllers
                 .Include(a => a.Photos)
                 .FirstOrDefaultAsync(a => a.Id == id);
 
-            if (apartmentToUpdate == null)
-            {
-                return NotFound();
-            }
+            if (apartmentToUpdate == null) return NotFound();
 
             var currentUserId = _userManager.GetUserId(User);
-            if (apartmentToUpdate.LessorId != currentUserId)
-            {
-                return Forbid();
-            }
+            if (apartmentToUpdate.LessorId != currentUserId) return Forbid();
 
             var normalizedAddress = apartment.FullAddress.Trim();
 
@@ -263,15 +229,14 @@ namespace ApartmentRental.Controllers
                 apartmentToUpdate.Latitude = apartment.Latitude;
                 apartmentToUpdate.Longitude = apartment.Longitude;
 
-                if (photos != null && photos.Count > 0)
+                if (photos is { Count: > 0 })
                 {
-                    if (apartmentToUpdate.Photos != null && apartmentToUpdate.Photos.Any())
+                    if (apartmentToUpdate.Photos is { Count: > 0 })
                     {
                         foreach (var oldPhoto in apartmentToUpdate.Photos)
                         {
                             await _blobService.DeleteAsync(oldPhoto.ImageUrl);
                         }
-
                         _context.Photos.RemoveRange(apartmentToUpdate.Photos);
                     }
 
@@ -282,44 +247,33 @@ namespace ApartmentRental.Controllers
                         using var stream = file.OpenReadStream();
                         var url = await _blobService.UploadAsync(stream, file.FileName, file.ContentType);
 
-                        var photo = new Photo
+                        _context.Photos.Add(new Photo
                         {
                             ApartmentId = apartmentToUpdate.Id,
                             ImageUrl = url
-                        };
-
-                        _context.Photos.Add(photo);
+                        });
                     }
-
                 }
 
                 await _context.SaveChangesAsync();
 
                 try
                 {
-                    await IndexApartmentAsync(apartmentToUpdate);
+                    await IndexApartmentAsync(apartmentToUpdate, HttpContext.RequestAborted);
                 }
                 catch (Exception ex)
                 {
                     _logger.LogWarning(ex, "Azure Search indexing failed for apartment {ApartmentId}", apartmentToUpdate.Id);
                 }
-
             }
             catch (DbUpdateConcurrencyException)
             {
-                if (!ApartmentExists(apartment.Id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
+                if (!ApartmentExists(apartment.Id)) return NotFound();
+                throw;
             }
 
             return RedirectToAction(nameof(Index));
         }
-
 
         public async Task<IActionResult> Delete(int? id)
         {
@@ -332,11 +286,7 @@ namespace ApartmentRental.Controllers
             if (apartment == null) return NotFound();
 
             var currentUserId = _userManager.GetUserId(User);
-
-            if (apartment.LessorId != currentUserId)
-            {
-                return Forbid();
-            }
+            if (apartment.LessorId != currentUserId) return Forbid();
 
             return View(apartment);
         }
@@ -349,18 +299,12 @@ namespace ApartmentRental.Controllers
                 .Include(a => a.Photos)
                 .FirstOrDefaultAsync(a => a.Id == id);
 
-            if (apartment == null)
-            {
-                return RedirectToAction(nameof(Index));
-            }
+            if (apartment == null) return RedirectToAction(nameof(Index));
 
             var currentUserId = _userManager.GetUserId(User);
-            if (apartment.LessorId != currentUserId)
-            {
-                return Forbid();
-            }
+            if (apartment.LessorId != currentUserId) return Forbid();
 
-            if (apartment.Photos != null && apartment.Photos.Any())
+            if (apartment.Photos is { Count: > 0 })
             {
                 foreach (var photo in apartment.Photos)
                 {
@@ -373,7 +317,7 @@ namespace ApartmentRental.Controllers
 
             try
             {
-                await _search.DeleteAsync($"apt-{id}");
+                await _search.DeleteAsync($"apt-{id}", HttpContext.RequestAborted);
             }
             catch (Exception ex)
             {
@@ -383,10 +327,7 @@ namespace ApartmentRental.Controllers
             return RedirectToAction(nameof(Index));
         }
 
-        private bool ApartmentExists(int id)
-        {
-            return _context.Apartments.Any(e => e.Id == id);
-        }
+        private bool ApartmentExists(int id) => _context.Apartments.Any(e => e.Id == id);
 
         [AllowAnonymous]
         public async Task<IActionResult> Landing(int id)
@@ -396,32 +337,8 @@ namespace ApartmentRental.Controllers
                 .Include(a => a.Photos)
                 .FirstOrDefaultAsync(a => a.Id == id);
 
-            if (apartment == null)
-            {
-                return NotFound();
-            }
-
+            if (apartment == null) return NotFound();
             return View(apartment);
-        }
-        private async Task IndexApartmentAsync(Apartment apartment, CancellationToken ct = default)
-        {
-            string? lessorEmail = apartment.Lessor?.Email;
-
-            if (string.IsNullOrWhiteSpace(lessorEmail) && !string.IsNullOrWhiteSpace(apartment.LessorId))
-            {
-                var lessor = await _userManager.FindByIdAsync(apartment.LessorId);
-                lessorEmail = lessor?.Email;
-            }
-
-            var doc = new ApartmentSearchDocument
-            {
-                Id = $"apt-{apartment.Id}",
-                ApartmentId = apartment.Id,
-                Title = apartment.Title ?? "",
-                LessorEmail = lessorEmail ?? ""
-            };
-
-            await _search.IndexAsync(doc, ct);
         }
 
         [AllowAnonymous]
@@ -433,8 +350,8 @@ namespace ApartmentRental.Controllers
                 return View(new List<Apartment>());
 
             var hits = await _search.SearchAsync(q, ct);
-
             var ids = hits.Select(x => x.ApartmentId).Distinct().ToList();
+
             if (ids.Count == 0)
                 return View(new List<Apartment>());
 
@@ -444,9 +361,9 @@ namespace ApartmentRental.Controllers
                 .Where(a => ids.Contains(a.Id))
                 .ToListAsync(ct);
 
-            apartments = apartments.OrderBy(a => ids.IndexOf(a.Id)).ToList();
+            var order = ids.Select((id, i) => new { id, i }).ToDictionary(x => x.id, x => x.i);
+            apartments = apartments.OrderBy(a => order[a.Id]).ToList();
 
-            ViewBag.Query = q;
             return View(apartments);
         }
 
@@ -458,21 +375,39 @@ namespace ApartmentRental.Controllers
             if (!HttpContext.RequestServices.GetRequiredService<IWebHostEnvironment>().IsDevelopment())
                 return NotFound();
 
-            var apartments = await _context.Apartments
-                .Include(a => a.Lessor)
-                .ToListAsync(ct);
+            var apartments = await _context.Apartments.ToListAsync(ct);
 
             foreach (var a in apartments)
             {
-                await IndexApartmentAsync(a, ct);
+                try
+                {
+                    await IndexApartmentAsync(a, ct);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Azure Search indexing failed during reindex for apartment {ApartmentId}", a.Id);
+                }
             }
 
             return Ok(new { message = "Reindex done", count = apartments.Count });
         }
 
-        public IActionResult Map()
+        public IActionResult Map() => View();
+
+        private async Task IndexApartmentAsync(Apartment apartment, CancellationToken ct = default)
         {
-            return View();
+            var lessor = await _userManager.FindByIdAsync(apartment.LessorId);
+            var lessorEmail = lessor?.Email ?? "";
+
+            var doc = new ApartmentSearchDocument
+            {
+                Id = $"apt-{apartment.Id}",
+                ApartmentId = apartment.Id,
+                Title = apartment.Title ?? "",
+                LessorEmail = lessorEmail
+            };
+
+            await _search.IndexAsync(doc, ct);
         }
     }
 }

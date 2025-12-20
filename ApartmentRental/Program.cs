@@ -26,9 +26,6 @@ builder.Services.AddAuthentication()
         options.Scope.Add("profile");
         options.Scope.Add("email");
 
-        // Optional: store tokens (only if you plan to use Google APIs later)
-        // options.SaveTokens = true;
-
         // Map extra profile fields
         options.ClaimActions.MapJsonKey(ClaimTypes.GivenName, "given_name");
         options.ClaimActions.MapJsonKey(ClaimTypes.Surname, "family_name");
@@ -59,6 +56,7 @@ builder.Services.AddScoped<IBlobService, BlobService>();
 builder.Services.Configure<AzureSearchOptions>(builder.Configuration.GetSection("AzureSearch"));
 builder.Services.AddSingleton<IApartmentSearchService, ApartmentSearchService>();
 
+builder.Services.AddControllers();
 
 var app = builder.Build();
 
@@ -77,6 +75,8 @@ app.UseRouting();
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+app.MapControllers();
 
 app.MapControllerRoute(
     name: "default",
