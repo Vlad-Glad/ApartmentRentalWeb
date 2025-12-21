@@ -1,30 +1,17 @@
 ﻿<!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-    <title>
-        @if (ViewData["Title"] != null)
-        {
-            @ViewData["Title"] @: - ApartmentRental
-        }
-        else
-        {
-            @:ApartmentRental
-        }
-    </title>
+    <title>@(ViewData["Title"] != null ? $"{ViewData["Title"]} - ApartmentRental" : "ApartmentRental")</title>
 
-    @if (ViewData["MetaDescription"] != null)
-    {
-        <meta name="description" content="@(ViewData["MetaDescription"])" />
-    }
+    <meta name="description" content="@(ViewData["MetaDescription"] ?? "ApartmentRental - apartment listings and rentals.")" />
 
-    <!-- OG-теги -->
+    <!-- Open Graph -->
     <meta property="og:site_name" content="ApartmentRental" />
     <meta property="og:title" content="@(ViewData["Title"] ?? "ApartmentRental")" />
-    <meta property="og:description" content="@(ViewData["MetaDescription"] ?? "Каталог оголошень оренди квартир.")" />
+    <meta property="og:description" content="@(ViewData["MetaDescription"] ?? "ApartmentRental - apartment listings and rentals.")" />
 
     @if (ViewData["MetaImage"] != null)
     {
@@ -33,6 +20,8 @@
 
     <meta property="og:type" content="website" />
     <meta property="og:url" content="@($"{Context.Request.Scheme}://{Context.Request.Host}{Context.Request.Path}")" />
+
+    <link rel="canonical" href="@($"{Context.Request.Scheme}://{Context.Request.Host}{Context.Request.Path}")" />
 
     <!-- Google Analytics 4 -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-JE04GD0ZE3"></script>
@@ -47,9 +36,11 @@
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/ApartmentRental.styles.css" asp-append-version="true" />
 
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" />
+
+    <link rel="icon" type="image/x-icon" href="~/favicon.ico" asp-append-version="true" />
+
+    @await RenderSectionAsync("Head", required: false)
 </head>
 
 <body class="app-body">
@@ -59,6 +50,7 @@
                 <a class="navbar-brand fw-bold" asp-area="" asp-controller="Apartments" asp-action="Index">
                     <i class="bi bi-buildings"></i> ApartmentRental
                 </a>
+
                 <form class="d-flex" asp-controller="Apartments" asp-action="Search" method="get">
                     <input class="form-control me-2"
                            type="search"
@@ -98,11 +90,9 @@
         </div>
     </div>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
-    <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
 
     <script>
         document.addEventListener("DOMContentLoaded", function () {
@@ -135,5 +125,4 @@
 
     @await RenderSectionAsync("Scripts", required: false)
 </body>
-
 </html>

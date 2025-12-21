@@ -1,5 +1,6 @@
 ﻿@model ApartmentRental.Models.Apartment
 @using System.Globalization
+@using System.Text.Json
 
 @{
     ViewData["Title"] = $"{Model.Title} – rent in {Model.City}";
@@ -9,15 +10,22 @@
         : Model.Description;
 
     var normalized = rawDescription.Replace("\r", " ")
-                                  .Replace("\n", " ")
-                                  .Trim();
+                                   .Replace("\n", " ")
+                                   .Trim();
 
-    string metaDescription = normalized.Length > 160
+    ViewData["MetaDescription"] = normalized.Length > 160
         ? normalized.Substring(0, 157) + "..."
         : normalized;
 
-    ViewData["MetaDescription"] = metaDescription;
-    ViewData["MetaImage"] = Model.Photos.FirstOrDefault()?.ImageUrl;
+    var firstImage = Model.Photos?.FirstOrDefault()?.ImageUrl;
+    if (!string.IsNullOrWhiteSpace(firstImage))
+    {
+        var absolute = firstImage.StartsWith("http", StringComparison.OrdinalIgnoreCase)
+            ? firstImage
+            : $"{Context.Request.Scheme}://{Context.Request.Host}{firstImage}";
+
+        ViewData["MetaImage"] = absolute;
+    }
 }
 
 <div class="container my-4">
@@ -118,20 +126,22 @@
     </div>
 </div>
 
+@section Head {
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+}
+
 @section Scripts {
-    @{
-        await Html.RenderPartialAsync("_ValidationScriptsPartial");
-    }
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <script>
         document.addEventListener("DOMContentLoaded", function () {
             const lat = @(Model.Latitude.HasValue
-                            ? Model.Latitude.Value.ToString(CultureInfo.InvariantCulture)
-                        : "null");
+                                                    ? Model.Latitude.Value.ToString(CultureInfo.InvariantCulture)
+                                                : "null");
 
         const lng = @(Model.Longitude.HasValue
-                        ? Model.Longitude.Value.ToString(CultureInfo.InvariantCulture)
-                        : "null");
+                                                ? Model.Longitude.Value.ToString(CultureInfo.InvariantCulture)
+                                                : "null");
 
         if (lat === null || lng === null) {
             const mapDiv = document.getElementById("apartment-map");
@@ -150,7 +160,7 @@
 
             L.marker([lat, lng])
                 .addTo(map)
-                .bindPopup(@Json.Serialize(Model.Title));
+                .bindPopup(@Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Title ?? "")));
         });
     </script>
 
@@ -167,3 +177,4 @@
         });
     </script>
 }
+

@@ -29,7 +29,12 @@
     </div>
 </div>
 
+@section Head {
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+}
+
 @section Scripts {
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
         document.addEventListener("DOMContentLoaded", async function () {
             var map = L.map('apartments-map').setView([49.0, 31.0], 6);
