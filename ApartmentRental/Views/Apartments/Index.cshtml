@@ -4,7 +4,7 @@
     ViewData["Title"] = "Apartments";
 }
 
-@if (Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development")
+@* @if (Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development")
 {
     <form asp-action="Reindex" method="post" class="mb-3">
         @Html.AntiForgeryToken()
@@ -12,7 +12,7 @@
             Reindex Azure Search (Dev)
         </button>
     </form>
-}
+} *@
 
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
     <div>

@@ -45,8 +45,6 @@ namespace ApartmentRental.Services.ExchangeRates
                 if (items is null || items.Count == 0)
                     return null;
 
-                // Pick "sale" rate (most common for display/conversion).
-                // If you want "buy", switch to Buy below.
                 decimal usdToUah = ReadRate(items, "USD", useSale: true);
                 decimal eurToUah = ReadRate(items, "EUR", useSale: true);
 
