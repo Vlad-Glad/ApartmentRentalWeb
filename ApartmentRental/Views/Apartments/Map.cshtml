@@ -23,8 +23,38 @@
     </div>
 
     <div class="card app-card">
-        <div class="card-body p-0">
+        <div class="card-body p-0 position-relative">
             <div id="apartments-map" class="border rounded" style="height: 540px;"></div>
+
+            <!-- Stats overlay (on top of the map) -->
+            <div class="position-absolute top-0 end-0 p-3" style="z-index: 1000; width: 360px;">
+                <div class="card app-card shadow-sm">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <div>
+                                <div class="fw-semibold">Apartments by city</div>
+                                <div class="text-muted small" id="totalApartmentsText">Loading...</div>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="refreshStatsBtn">
+                                Refresh
+                            </button>
+                        </div>
+
+                        <canvas id="cityChart" height="180"></canvas>
+
+                        <div class="text-muted small mt-2">
+                            Top 10 cities by number of listings.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- No results label -->
+            <div id="noResultsBadge"
+                 class="position-absolute bottom-0 start-0 m-3 px-3 py-2 bg-white border rounded shadow-sm d-none"
+                 style="z-index: 1000;">
+                <span class="text-muted">No apartments found for the selected filter.</span>
+            </div>
         </div>
     </div>
 </div>
@@ -35,92 +65,185 @@
 
 @section Scripts {
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
     <script>
-        document.addEventListener("DOMContentLoaded", async function () {
-            var map = L.map('apartments-map').setView([49.0, 31.0], 6);
+        // --- Small helpers ---
+        function escapeHtml(str) {
+            return String(str ?? "")
+                .replaceAll("&", "&amp;")
+                .replaceAll("<", "&lt;")
+                .replaceAll(">", "&gt;")
+                .replaceAll('"', "&quot;")
+                .replaceAll("'", "&#039;");
+        }
 
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                maxZoom: 19,
-                attribution: '&copy; OpenStreetMap contributors'
-            }).addTo(map);
+        function setNoResultsVisible(isVisible) {
+            const el = document.getElementById("noResultsBadge");
+            if (!el) return;
+            el.classList.toggle("d-none", !isVisible);
+        }
 
-            let markers = [];
-            let allApartments = [];
+        // --- Main page logic ---
+        document.addEventListener("DOMContentLoaded", () => {
+            const state = {
+                map: null,
+                markers: [],
+                allApartments: [],
+                chart: null
+            };
 
-            async function loadApartments() {
-                const response = await fetch('/api/apartments?skip=0&limit=100');
-                if (!response.ok) {
-                    console.error('Failed to load apartments');
+            const cityFilterEl = document.getElementById("cityFilter");
+            const refreshStatsBtn = document.getElementById("refreshStatsBtn");
+
+            initMap(state);
+            wireEvents(state);
+
+            // initial load
+            Promise.all([loadApartments(state), loadStats(state)])
+                .catch(err => console.error(err));
+
+            function initMap(state) {
+                state.map = L.map("apartments-map").setView([49.0, 31.0], 6);
+
+                L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+                    maxZoom: 19,
+                    attribution: "&copy; OpenStreetMap contributors"
+                }).addTo(state.map);
+            }
+
+            function wireEvents(state) {
+                cityFilterEl.addEventListener("change", () => renderMarkers(state));
+                refreshStatsBtn.addEventListener("click", () => loadStats(state));
+            }
+
+            async function loadApartments(state) {
+                // If you have more than 100 apartments, switch to pagination or a dedicated map endpoint.
+                const res = await fetch("/api/apartments?skip=0&limit=100", { cache: "no-store" });
+                if (!res.ok) {
+                    console.error("Failed to load apartments. HTTP:", res.status);
                     return;
                 }
 
-                const result = await response.json();
-                allApartments = result.items || [];
+                const payload = await res.json();
+                state.allApartments = payload.items || [];
 
-                initCityFilter();
-                renderMarkers();
+                populateCityFilter(state);
+                renderMarkers(state);
             }
 
-            function initCityFilter() {
-                const citySelect = document.getElementById('cityFilter');
-                const cities = [...new Set(allApartments
-                    .filter(a => a.city)
-                    .map(a => a.city))].sort();
+            function populateCityFilter(state) {
+                // reset options (keep "All cities")
+                cityFilterEl.querySelectorAll("option:not([value=''])").forEach(o => o.remove());
 
-                cities.forEach(city => {
-                    const opt = document.createElement('option');
+                const cities = [...new Set(
+                    state.allApartments
+                        .map(a => (a.city ?? "").trim())
+                        .filter(x => x.length > 0)
+                )].sort((a, b) => a.localeCompare(b));
+
+                for (const city of cities) {
+                    const opt = document.createElement("option");
                     opt.value = city;
                     opt.textContent = city;
-                    citySelect.appendChild(opt);
-                });
-
-                citySelect.addEventListener('change', renderMarkers);
+                    cityFilterEl.appendChild(opt);
+                }
             }
 
-            function renderMarkers() {
-                markers.forEach(m => map.removeLayer(m));
-                markers = [];
+            function clearMarkers(state) {
+                for (const m of state.markers) {
+                    state.map.removeLayer(m);
+                }
+                state.markers = [];
+            }
 
-                const cityFilter = document.getElementById('cityFilter').value;
+            function renderMarkers(state) {
+                clearMarkers(state);
 
-                const filtered = allApartments.filter(a => {
-                    if (cityFilter && a.city !== cityFilter) return false;
+                const selectedCity = (cityFilterEl.value || "").trim();
+
+                const filtered = state.allApartments.filter(a => {
+                    if (selectedCity && a.city !== selectedCity) return false;
                     return a.latitude != null && a.longitude != null;
                 });
 
+                setNoResultsVisible(filtered.length === 0);
                 if (filtered.length === 0) return;
 
                 const bounds = [];
 
-                filtered.forEach(a => {
+                for (const a of filtered) {
                     const lat = a.latitude;
                     const lng = a.longitude;
-                    const marker = L.marker([lat, lng]).addTo(map);
 
-                    const safeTitle = (a.title ?? 'Apartment').toString();
-                    const safeCity = (a.city ?? '').toString();
-                    const safePrice = a.price ?? '';
+                    const title = escapeHtml(a.title || "Apartment");
+                    const city = escapeHtml(a.city || "");
+                    const price = escapeHtml(a.price);
 
                     const popupHtml = `
                         <div>
-                            <strong>${safeTitle}</strong><br/>
-                            ${safeCity}<br/>
-                            Price: ${safePrice} $/month<br/>
+                            <strong>${title}</strong><br/>
+                            ${city}<br/>
+                            Price: ${price} $/month<br/>
                             <a href="/Apartments/Landing/${a.id}">View</a>
                         </div>
                     `;
 
+                    const marker = L.marker([lat, lng]).addTo(state.map);
                     marker.bindPopup(popupHtml);
-                    markers.push(marker);
+
+                    state.markers.push(marker);
                     bounds.push([lat, lng]);
-                });
+                }
 
                 if (bounds.length > 0) {
-                    map.fitBounds(bounds, { padding: [30, 30] });
+                    state.map.fitBounds(bounds, { padding: [30, 30] });
                 }
             }
 
-            await loadApartments();
+            async function loadStats(state) {
+                const totalText = document.getElementById("totalApartmentsText");
+
+                try {
+                    totalText.textContent = "Loading...";
+
+                    const res = await fetch("/api/stats/apartments", { cache: "no-store" });
+                    if (!res.ok) throw new Error("Stats request failed. HTTP: " + res.status);
+
+                    const data = await res.json();
+
+                    totalText.textContent = `Total apartments: ${data.totalApartments}`;
+
+                    const labels = (data.byCity || []).map(x => x.city);
+                    const counts = (data.byCity || []).map(x => x.count);
+
+                    const ctx = document.getElementById("cityChart");
+
+                    if (state.chart) {
+                        state.chart.destroy();
+                        state.chart = null;
+                    }
+
+                    state.chart = new Chart(ctx, {
+                        type: "bar",
+                        data: {
+                            labels,
+                            datasets: [{
+                                label: "Listings",
+                                data: counts
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            plugins: { legend: { display: false } },
+                            scales: { y: { beginAtZero: true } }
+                        }
+                    });
+                } catch (e) {
+                    console.error(e);
+                    totalText.textContent = "Stats are temporarily unavailable.";
+                }
+            }
         });
     </script>
 }
