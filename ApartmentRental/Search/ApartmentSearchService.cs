@@ -56,7 +56,6 @@ public sealed class ApartmentSearchService : IApartmentSearchService
         options.SearchFields.Add("title");
         options.SearchFields.Add("lessorEmail");
 
-        // ensure fields are returned
         options.Select.Add("id");
         options.Select.Add("apartmentId");
         options.Select.Add("title");
