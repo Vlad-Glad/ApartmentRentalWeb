@@ -26,7 +26,7 @@
         <div class="card-body p-0 position-relative">
             <div id="apartments-map" class="border rounded" style="height: 540px;"></div>
 
-            <!-- Stats overlay (on top of the map) -->
+            <!-- Stats overlay -->
             <div class="position-absolute top-0 end-0 p-3" style="z-index: 1000; width: 360px;">
                 <div class="card app-card shadow-sm">
                     <div class="card-body">
@@ -67,8 +67,10 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
+    <script src="~/lib/microsoft/signalr/dist/browser/signalr.min.js"></script>
+
+
     <script>
-        // --- Small helpers ---
         function escapeHtml(str) {
             return String(str ?? "")
                 .replaceAll("&", "&amp;")
@@ -84,13 +86,20 @@
             el.classList.toggle("d-none", !isVisible);
         }
 
-        // --- Main page logic ---
+        function normalizeCity(value) {
+            return String(value ?? "").trim();
+        }
+
         document.addEventListener("DOMContentLoaded", () => {
             const state = {
                 map: null,
                 markers: [],
                 allApartments: [],
-                chart: null
+                chart: null,
+                connection: null,
+                refreshTimer: null,
+                isRefreshing: false,
+                citiesLoadedOnce: false
             };
 
             const cityFilterEl = document.getElementById("cityFilter");
@@ -99,9 +108,11 @@
             initMap(state);
             wireEvents(state);
 
-            // initial load
-            Promise.all([loadApartments(state), loadStats(state)])
-                .catch(err => console.error(err));
+            // Initial load
+            refreshAll(state).catch(err => console.error(err));
+
+            // Real-time
+            initRealtime(state).catch(err => console.error(err));
 
             function initMap(state) {
                 state.map = L.map("apartments-map").setView([49.0, 31.0], 6);
@@ -113,40 +124,83 @@
             }
 
             function wireEvents(state) {
-                cityFilterEl.addEventListener("change", () => renderMarkers(state));
-                refreshStatsBtn.addEventListener("click", () => loadStats(state));
+                cityFilterEl.addEventListener("change", async () => {
+                    // Render markers immediately
+                    renderMarkers(state);
+
+                    // Optional: group subscription by city (safe if hub methods exist)
+                    await tryUpdateCityGroup(state);
+                });
+
+                refreshStatsBtn.addEventListener("click", () => refreshAll(state));
+            }
+
+            async function refreshAll(state) {
+                if (state.isRefreshing) return;
+                state.isRefreshing = true;
+
+                try {
+                    await loadApartments(state);
+                    await loadStats(state);
+                } finally {
+                    state.isRefreshing = false;
+                }
+            }
+
+            // Debounced refresh on SignalR events (prevents spam)
+            function scheduleRefresh(state) {
+                if (state.refreshTimer) clearTimeout(state.refreshTimer);
+                state.refreshTimer = setTimeout(() => {
+                    refreshAll(state).catch(err => console.error(err));
+                }, 300);
             }
 
             async function loadApartments(state) {
-                // If you have more than 100 apartments, switch to pagination or a dedicated map endpoint.
+                const selectedCityBefore = normalizeCity(cityFilterEl.value);
+
+                // If you can exceed 100 apartments, create a dedicated endpoint for the map.
                 const res = await fetch("/api/apartments?skip=0&limit=100", { cache: "no-store" });
                 if (!res.ok) {
                     console.error("Failed to load apartments. HTTP:", res.status);
+                    state.allApartments = [];
+                    populateCityFilter(state, selectedCityBefore);
+                    renderMarkers(state);
                     return;
                 }
 
                 const payload = await res.json();
                 state.allApartments = payload.items || [];
 
-                populateCityFilter(state);
+                populateCityFilter(state, selectedCityBefore);
                 renderMarkers(state);
             }
 
-            function populateCityFilter(state) {
-                // reset options (keep "All cities")
-                cityFilterEl.querySelectorAll("option:not([value=''])").forEach(o => o.remove());
+            function populateCityFilter(state, selectedCityToKeep) {
+                const selected = normalizeCity(selectedCityToKeep);
 
+                // Build city set from data
                 const cities = [...new Set(
                     state.allApartments
-                        .map(a => (a.city ?? "").trim())
+                        .map(a => normalizeCity(a.city))
                         .filter(x => x.length > 0)
                 )].sort((a, b) => a.localeCompare(b));
+
+                // Rebuild dropdown but keep "All cities"
+                cityFilterEl.querySelectorAll("option:not([value=''])").forEach(o => o.remove());
 
                 for (const city of cities) {
                     const opt = document.createElement("option");
                     opt.value = city;
                     opt.textContent = city;
                     cityFilterEl.appendChild(opt);
+                }
+
+                // Restore selection if still available
+                if (selected && cities.includes(selected)) {
+                    cityFilterEl.value = selected;
+                } else {
+                    // keep All cities
+                    cityFilterEl.value = "";
                 }
             }
 
@@ -160,10 +214,10 @@
             function renderMarkers(state) {
                 clearMarkers(state);
 
-                const selectedCity = (cityFilterEl.value || "").trim();
+                const selectedCity = normalizeCity(cityFilterEl.value);
 
                 const filtered = state.allApartments.filter(a => {
-                    if (selectedCity && a.city !== selectedCity) return false;
+                    if (selectedCity && normalizeCity(a.city) !== selectedCity) return false;
                     return a.latitude != null && a.longitude != null;
                 });
 
@@ -242,6 +296,61 @@
                 } catch (e) {
                     console.error(e);
                     totalText.textContent = "Stats are temporarily unavailable.";
+                }
+            }
+
+            async function initRealtime(state) {
+                if (typeof signalR === "undefined") {
+                    console.warn("SignalR client library is not loaded.");
+                    return;
+                }
+
+                const connection = new signalR.HubConnectionBuilder()
+                    .withUrl("/hubs/apartments")
+                    .withAutomaticReconnect()
+                    .build();
+
+                connection.on("apartmentChanged", (payload) => {
+                    console.log("apartmentChanged:", payload);
+                    scheduleRefresh(state);
+                });
+
+                connection.onreconnecting((err) => console.warn("SignalR reconnecting...", err));
+                connection.onreconnected(() => console.info("SignalR reconnected."));
+                connection.onclose((err) => console.warn("SignalR closed.", err));
+
+                await connection.start();
+                console.info("SignalR connected.");
+
+                state.connection = connection;
+
+                // Join group for initial city (if any and if hub supports it)
+                await tryUpdateCityGroup(state);
+            }
+
+            async function tryUpdateCityGroup(state) {
+                if (!state.connection) return;
+
+                const selectedCity = normalizeCity(cityFilterEl.value);
+
+                // If you implemented JoinCity/LeaveCity in hub, this will work.
+                // If not implemented, we catch and ignore.
+                try {
+                    if (state.currentCityGroup) {
+                        await state.connection.invoke("LeaveCity", state.currentCityGroup);
+                    }
+                } catch (e) {
+                    // ignore if method doesn't exist
+                }
+
+                state.currentCityGroup = selectedCity || "";
+
+                if (!state.currentCityGroup) return;
+
+                try {
+                    await state.connection.invoke("JoinCity", state.currentCityGroup);
+                } catch (e) {
+                    // ignore if method doesn't exist
                 }
             }
         });

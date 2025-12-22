@@ -56,6 +56,9 @@ builder.Services.AddScoped<IBlobService, BlobService>();
 builder.Services.Configure<AzureSearchOptions>(builder.Configuration.GetSection("AzureSearch"));
 builder.Services.AddSingleton<IApartmentSearchService, ApartmentSearchService>();
 
+builder.Services.AddSignalR();
+
+
 builder.Services.AddControllers();
 
 var app = builder.Build();
@@ -83,6 +86,8 @@ app.UseHttpsRedirection();
 app.UseStaticFiles();
 
 app.UseRouting();
+
+app.MapHub<ApartmentRental.Hubs.ApartmentsHub>("/hubs/apartments");
 
 app.UseAuthentication();
 app.UseAuthorization();

@@ -7,6 +7,8 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.SignalR;
+using ApartmentRental.Hubs;
 
 namespace ApartmentRental.Controllers
 {
@@ -18,18 +20,21 @@ namespace ApartmentRental.Controllers
         private readonly IBlobService _blobService;
         private readonly IApartmentSearchService _search;
         private readonly ILogger<ApartmentsController> _logger;
+        private readonly IHubContext<ApartmentsHub> _hub;
 
         public ApartmentsController(
             ApplicationDbContext context,
             UserManager<ApplicationUser> userManager,
             IBlobService blobService,
             IApartmentSearchService search,
+             IHubContext<ApartmentsHub> hub,
             ILogger<ApartmentsController> logger)
         {
             _context = context;
             _userManager = userManager;
             _blobService = blobService;
             _search = search;
+            _hub = hub;
             _logger = logger;
         }
 
@@ -94,9 +99,7 @@ namespace ApartmentRental.Controllers
             }
 
             if (!ModelState.IsValid)
-            {
                 return View(apartment);
-            }
 
             var userId = _userManager.GetUserId(User);
             if (userId == null) return Challenge();
@@ -120,15 +123,7 @@ namespace ApartmentRental.Controllers
             _context.Add(apartment);
             await _context.SaveChangesAsync();
 
-            try
-            {
-                await IndexApartmentAsync(apartment, HttpContext.RequestAborted);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Azure Search indexing failed for apartment {ApartmentId}", apartment.Id);
-            }
-
+            // Upload photos (optional)
             if (photos is { Count: > 0 })
             {
                 foreach (var file in photos)
@@ -148,8 +143,34 @@ namespace ApartmentRental.Controllers
                 await _context.SaveChangesAsync();
             }
 
+            // Azure Search indexing
+            try
+            {
+                await IndexApartmentAsync(apartment, HttpContext.RequestAborted);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Azure Search indexing failed for apartment {ApartmentId}", apartment.Id);
+            }
+
+            // SignalR event
+            try
+            {
+                await _hub.Clients.All.SendAsync("apartmentChanged", new
+                {
+                    action = "created",
+                    apartmentId = apartment.Id,
+                    city = apartment.City
+                }, HttpContext.RequestAborted);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "SignalR notify failed for apartment {ApartmentId}", apartment.Id);
+            }
+
             return RedirectToAction(nameof(Index));
         }
+
 
         public async Task<IActionResult> Edit(int? id)
         {
@@ -265,6 +286,21 @@ namespace ApartmentRental.Controllers
                 {
                     _logger.LogWarning(ex, "Azure Search indexing failed for apartment {ApartmentId}", apartmentToUpdate.Id);
                 }
+
+                // SignalR event
+                try
+                {
+                    await _hub.Clients.All.SendAsync("apartmentChanged", new
+                    {
+                        action = "updated",
+                        apartmentId = apartmentToUpdate.Id,
+                        city = apartmentToUpdate.City
+                    });
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "SignalR notify failed for apartment {ApartmentId}", apartment.Id);
+                }
             }
             catch (DbUpdateConcurrencyException)
             {
@@ -322,6 +358,20 @@ namespace ApartmentRental.Controllers
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "Azure Search delete failed for apartment {ApartmentId}", id);
+            }
+
+            // SignalR event
+            try
+            {
+                await _hub.Clients.All.SendAsync("apartmentChanged", new
+                {
+                    action = "deleted",
+                    apartmentId = id
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "SignalR notify failed for apartment {ApartmentId}", apartment.Id);
             }
 
             return RedirectToAction(nameof(Index));
