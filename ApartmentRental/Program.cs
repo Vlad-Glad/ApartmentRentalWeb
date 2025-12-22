@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
+using ApartmentRental.Services.Realtime;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -56,6 +57,8 @@ builder.Services.AddScoped<IBlobService, BlobService>();
 builder.Services.Configure<AzureSearchOptions>(builder.Configuration.GetSection("AzureSearch"));
 builder.Services.AddSingleton<IApartmentSearchService, ApartmentSearchService>();
 
+builder.Services.AddSingleton<IDemoChangeStore, DemoChangeStore>();
+
 builder.Services.AddSignalR();
 
 
@@ -88,6 +91,8 @@ app.UseStaticFiles();
 app.UseRouting();
 
 app.MapHub<ApartmentRental.Hubs.ApartmentsHub>("/hubs/apartments");
+
+app.MapHub<ApartmentRental.Hubs.DemoHub>("/hubs/demo");
 
 app.UseAuthentication();
 app.UseAuthorization();
